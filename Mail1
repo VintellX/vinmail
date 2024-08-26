@@ -1,0 +1,23 @@
+# ~/.msmtprc
+
+# Default account configuration
+account default
+
+# SMTP server details
+host smtp.gmail.com # change it accordingly
+port 587
+
+# Authentication settings
+auth on
+user example1@gmail.com		# your email address
+from "Your Name"			# your name or the name you want to display
+
+# Password settings
+password YourPassword		# replace 'YourPassword' with your app password
+
+# You can also encrypt your password rather than using plain text for security
+# passwordeval gpg --decrypt ~/.vinmail/.Mail1.gpg
+
+# TLS settings for secure communication
+tls on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
