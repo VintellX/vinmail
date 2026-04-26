@@ -1,24 +1,24 @@
 #!/bin/bash
+# VinMail v0.2.0 Setup
 
-VINMAIL_DIR="$HOME/.vinmail"
-mkdir -p "$VINMAIL_DIR"
+VINMAIL_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/vinmail"
 
-cp vinmail.sh "$VINMAIL_DIR/vinmail.sh"
-chmod +x "$VINMAIL_DIR/vinmail.sh"
+echo "Setting up VinMail v0.2.0..."
 
-cp Mail.template "$VINMAIL_DIR/Mail1"
-cp Mail.template "$VINMAIL_DIR/Mail2"
-cp Mail.template "$VINMAIL_DIR/Mail3"
+mkdir -p "$VINMAIL_DIR/accounts"
 
-echo "VinMail installed to $VINMAIL_DIR"
+install -Dm755 vinmail.sh "$VINMAIL_DIR/vinmail.sh"
+install -Dm644 usr/share/vinmail/account.conf.template \
+    "/usr/share/vinmail/account.conf.template" 2>/dev/null \
+    || mkdir -p "$VINMAIL_DIR/share" && cp usr/share/vinmail/account.conf.template \
+    "$VINMAIL_DIR/share/account.conf.template"
+
+[[ ! -f "$HOME/.mailrc" ]] && cp usr/share/vinmail/mailrc "$HOME/.mailrc"
+
+touch "$VINMAIL_DIR/accounts.list"
+touch "$VINMAIL_DIR/.active"
+
+echo "  ✓ Installed to $VINMAIL_DIR"
 echo ""
-echo "Edit your account configs:"
-echo "  $VINMAIL_DIR/Mail1"
-echo "  $VINMAIL_DIR/Mail2"
-echo "  $VINMAIL_DIR/Mail3"
-echo ""
-echo "Then edit vinmail.sh and set your email addresses in the mailos=() array."
-echo ""
-echo "Add alias to your shell:"
-echo "  echo \"alias vinmail='$VINMAIL_DIR/vinmail.sh'\" >> ~/.bashrc"
-mailrc="$HOME/.mailrc"
+echo "Add alias to your shell (~/.bashrc or ~/.zshrc):"
+echo "  alias vinmail='$VINMAIL_DIR/vinmail.sh'"
