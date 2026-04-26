@@ -1,5 +1,5 @@
 #!/bin/bash
-# VinMail v0.1.0 - A simple mail selector for msmtp
+# VinMail v0.2.0 - A simple mail selector for msmtp
 # "Delivering bytes, not bites."
 
 VINMAIL_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/vinmail"
