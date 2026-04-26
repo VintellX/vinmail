@@ -2,12 +2,13 @@
 defaults
 auth           on
 tls            on
-tls_starttls   on
-tls_trust_file /etc/ssl/certs/ca-certificates.crt
+tls_starttls   {{TLS_STARTTLS}}
+tls_trust_file {{TLS_FILE}}
+logfile        {{LOGFILE}}
 
 account        default
-host           smtp.gmail.com
-port           587
-from           "Your Name"
-user           you@example.com
+host           {{HOST}}
+port           {{PORT}}
+from           "{{NAME}}"
+user           {{EMAIL}}
 password       PLACEHOLDER
