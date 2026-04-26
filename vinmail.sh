@@ -1,14 +1,16 @@
-# I bash people for fun - Osama Bin Bash
+#!/bin/bash
+# VinMail v0.1.0 - A simple mail selector for msmtp
+# "Delivering bytes, not bites."
 
 Mail1="$HOME/.vinmail/.Mail1"
 Mail2="$HOME/.vinmail/.Mail2"
 Mail3="$HOME/.vinmail/.Mail3"
 mainfilo="$HOME/.msmtprc"
 
-greetings=("¡Hola" "Hello" "Bonjour" "Salut" "Namaste (नमस्ते)" "Konnichiwa (こんにちは)" "Ciao" "NiHao (你好)" "Privet (Привет)")
+greetings=("Namaste (नमस्ते)" "Konnichiwa (こんにちは)" "¡Hola" "Hello" "Bonjour" "Salut" "Ciao" "NiHao (你好)" "Privet (Привет)")
 len=${#greetings[@]}
 index=$(($RANDOM % $len))
-echo "${greetings[$index]}, YourName!" # Change YourName to your name
+echo "${greetings[$index]}, $(whoami)!"
 echo "Choose your mail to use:"
 mailos=("<example1@domain.com>" "<example2@gmail.com>" "<example3@domain.dev>") # Change the mails to your mails
 taken=0
