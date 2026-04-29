@@ -1,22 +1,23 @@
-#!/bin/bash
-# VinMail v0.3.0 Setup
-
+#!/usr/bin/env bash
 set -e
-VINMAIL_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/vinmail"
 
-echo "Setting up VinMail v0.2.0..."
+echo "[*] Installing VinMail..."
 
-mkdir -p "$VINMAIL_DIR/accounts"
-install -Dm755 vinmail.sh "$VINMAIL_DIR/vinmail.sh"
+install -Dm755 usr/bin/vinmail /usr/bin/vinmail
 
-sudo mkdir -p /usr/share/vinmail
-sudo install -Dm644 usr/share/vinmail/account.conf.template /usr/share/vinmail/account.conf.template
-sudo install -Dm644 usr/share/vinmail/mailrc /usr/share/vinmail/mailrc
+install -Dm644 usr/lib/vinmail/core.sh     /usr/lib/vinmail/core.sh
+install -Dm644 usr/lib/vinmail/ui.sh       /usr/lib/vinmail/ui.sh
+install -Dm644 usr/lib/vinmail/accounts.sh /usr/lib/vinmail/accounts.sh
+install -Dm644 usr/lib/vinmail/compose.sh  /usr/lib/vinmail/compose.sh
 
-touch "$VINMAIL_DIR/accounts.list" "$VINMAIL_DIR/.active"
-[[ ! -f "$HOME/.mailrc" ]] && cp usr/share/vinmail/mailrc "$HOME/.mailrc"
+install -Dm644 usr/share/vinmail/account.conf.template \
+  /usr/share/vinmail/account.conf.template
 
-echo "  ✓ Installed VinMail to $VINMAIL_DIR"
-echo ""
-echo "Add to your shell config:"
-echo "  alias vinmail='$VINMAIL_DIR/vinmail.sh'"
+install -Dm644 usr/share/vinmail/mailrc \
+  /usr/share/vinmail/mailrc
+
+install -Dm644 usr/share/man/man1/vinmail.1 \
+  /usr/share/man/man1/vinmail.1
+
+echo "[✓] Installation complete."
+echo "Run: vinmail"
