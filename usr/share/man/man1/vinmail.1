@@ -1,0 +1,73 @@
+.TH VINMAIL 1 "2026" "vinmail 1.0.0" "User Commands"
+
+.SH NAME
+vinmail \- interactive terminal mail client for msmtp with multi-account and GPG support
+
+.SH SYNOPSIS
+.B vinmail
+
+.SH DESCRIPTION
+.B vinmail
+is a lightweight, Bash-based terminal mail client built on top of msmtp.
+It provides an interactive TUI for managing multiple email accounts and
+composing and sending mail directly from the terminal.
+
+Navigation is performed using arrow keys or j/k, Enter to select, and q to cancel.
+
+.SH FEATURES
+.TP
+.B Multi-account management
+Add, switch, edit, rename, and delete accounts with a guided interface.
+
+.TP
+.B Interactive mail composition
+Compose messages using $EDITOR with support for To, Cc, Bcc, and Subject fields.
+
+.TP
+.B GPG integration
+Optional GPG encryption for password storage and message signing.
+
+.TP
+.B SMTP configuration
+Predefined presets and automatic TLS configuration for common providers.
+
+.SH MENU OPTIONS
+.TP
+.B Switch active account
+Set the current account by copying its configuration to ~/.msmtprc.
+
+.TP
+.B Add account
+Launch an interactive setup wizard. Leaving a prompt empty aborts the process.
+
+.TP
+.B Edit account
+Modify configuration, update password, rename alias, view settings, or test SMTP.
+
+.TP
+.B Delete account
+Remove an account and its credentials. Requires typing 'yes' to confirm.
+
+.TP
+.B Send mail
+Open $EDITOR to compose a message and send it via the active account.
+
+.TP
+.B Status
+Display all configured accounts and their encryption status.
+
+.SH FILES
+.TP
+.I ~/.local/share/vinmail/
+User data directory containing account configs, registry, and logs.
+
+.TP
+.I ~/.msmtprc
+Active msmtp configuration managed by vinmail.
+
+.SH AUTHOR
+Written by VintellX.
+
+.SH SEE ALSO
+.BR msmtp (1),
+.BR gpg (1)
