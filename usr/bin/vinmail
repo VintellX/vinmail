@@ -1,0 +1,53 @@
+#!/bin/bash
+# VinMail v1.0.0 - Terminal based Mail Manager
+# "Bash-ing out an email."
+set -uo pipefail
+
+LIB="/usr/lib/vinmail"
+source "$LIB/core.sh"
+source "$LIB/ui.sh"
+source "$LIB/accounts.sh"
+source "$LIB/compose.sh"
+
+# ----- Main Menu -----
+vinify() {
+    local options=(
+        "Switch active account"
+        "Add account"
+        "Edit / Rename / Test"
+        "Delete account"
+        "Send mail"
+        "Status"
+        "Quit"
+    )
+    local count=${#options[@]} taken=0
+
+    while true; do
+        echoMainHeader
+        for i in "${!options[@]}"; do
+            [[ $i -eq $taken ]] \
+                && echo -e "  ${GREEN}▶  ${BOLD}${options[$i]}${RESET}" \
+                || echo -e "     ${options[$i]}"
+        done
+
+        readKeyboardo
+        case "$KEY" in
+            UP|k)     taken=$(( taken - 1 )); [[ $taken -lt 0 ]] && taken=$(( count - 1 )) ;;
+            DOWN|j)   taken=$(( taken + 1 )); [[ $taken -ge count ]] && taken=0 ;;
+            ""|$'\n')
+                case $taken in
+                    0) switchAccount ;; 1) addAccount  ;;
+                    2) editAccount   ;; 3) delAccount   ;;
+                    4) sendMail      ;; 5) showStatus   ;;
+                    6) echo -e "\n${DIM}  Goodbye.${RESET}\n"; exit 0 ;;
+                esac ;;
+            q|Q) echo -e "\n${DIM}  Goodbye.${RESET}\n"; exit 0 ;;
+        esac
+    done
+}
+
+# ----- Run -----
+mkdir -p "$VINMAIL_DIR"
+acquireLock
+init
+vinify
