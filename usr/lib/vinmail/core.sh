@@ -1,5 +1,5 @@
 #!/bin/bash
-# VinMail v1.0.0 - Terminal based Mail Manager
+# VinMail v1.1.0 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
 # ----- Paths -----
