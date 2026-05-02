@@ -3,7 +3,11 @@
 # "Bash-ing out an email."
 set -uo pipefail
 
-LIB="/usr/lib/vinmail"
+# LIB="/usr/lib/vinmail"
+_self="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+_self="$(realpath "$_self" 2>/dev/null || echo "$_self")"
+LIB="$(dirname "$_self")/../lib/vinmail"
+LIB="$(cd "$LIB" 2>/dev/null && pwd || echo "$LIB")"
 source "$LIB/core.sh"
 source "$LIB/ui.sh"
 source "$LIB/accounts.sh"
