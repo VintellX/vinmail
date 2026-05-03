@@ -1,9 +1,13 @@
 #!/bin/bash
-# VinMail v1.0.0 - Terminal based Mail Manager
+# VinMail v1.1.0 - Terminal based Mail Manager
 # "Bash-ing out an email."
 set -uo pipefail
 
-LIB="/usr/lib/vinmail"
+# LIB="/usr/lib/vinmail"
+_self="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+_self="$(realpath "$_self" 2>/dev/null || echo "$_self")"
+LIB="$(dirname "$_self")/../lib/vinmail"
+LIB="$(cd "$LIB" 2>/dev/null && pwd || echo "$LIB")"
 source "$LIB/core.sh"
 source "$LIB/ui.sh"
 source "$LIB/accounts.sh"
@@ -16,7 +20,7 @@ vinify() {
         "Add account"
         "Edit / Rename / Test"
         "Delete account"
-        "Send mail"
+        "Compose & send mail"
         "Status"
         "Quit"
     )
