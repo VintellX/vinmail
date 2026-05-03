@@ -28,4 +28,4 @@ Composing a mail opens a persistent screen where every field (To, Cc, Bcc, Subje
 
 Navigation throughout uses arrow keys and j/k, so it feels natural if you spend time in vim or any other terminal tool.
 
-### More: \[[Installation](https://github.com/VintellX/vinmail/wiki/Installation)\] \[[User Guide]](https://github.com/VintellX/vinmail/wiki/User-Guide)\] 
+### More: \[[Installation](https://github.com/VintellX/vinmail/wiki/Installation)\] \[[User Guide](https://github.com/VintellX/vinmail/wiki/User-Guide)\] 
