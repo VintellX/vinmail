@@ -1,5 +1,5 @@
 #!/bin/bash
-# VinMail v1.0.0 - Terminal based Mail Manager
+# VinMail v1.1.0 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
 # ----- Paths -----
@@ -8,11 +8,14 @@ ACCOUNTS_DIR="$VINMAIL_DIR/accounts"
 META_FILE="$VINMAIL_DIR/accounts.list"   # alias|email|encrypted(0|1)
 ACTIVE_FILE="$VINMAIL_DIR/.active"
 MSMTPRC="$HOME/.msmtprc"
-TEMPLATE_DIR="/usr/share/vinmail"
+# TEMPLATE_DIR="/usr/share/vinmail"
+_lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TEMPLATE_DIR="$(cd "$_lib_dir/../../share/vinmail" 2>/dev/null && pwd \
+    || echo "/usr/share/vinmail")"
 LOCK_FILE="$VINMAIL_DIR/.lock"
 LOCK_DIR="$VINMAIL_DIR/.lockdir"
-VERSION="1.0.0"
-SUBTITLE="Bash-ing out an email; Don't let email be a pain in the inbox."
+VERSION="1.1.0"
+SUBTITLE="Bash-ing out an email; Shell yeah, mail sent."
 
 # ----- Color Codos -----
 if [[ -t 1 ]]; then
