@@ -14,8 +14,8 @@ TEMPLATE_DIR="$(cd "$_lib_dir/../../share/vinmail" 2>/dev/null && pwd \
     || echo "/usr/share/vinmail")"
 LOCK_FILE="$VINMAIL_DIR/.lock"
 LOCK_DIR="$VINMAIL_DIR/.lockdir"
-VERSION="1.0.0"
-SUBTITLE="Bash-ing out an email; Don't let email be a pain in the inbox."
+VERSION="1.1.0"
+SUBTITLE="Bash-ing out an email; Shell yeah, mail sent."
 
 # ----- Color Codos -----
 if [[ -t 1 ]]; then
