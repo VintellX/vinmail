@@ -23,7 +23,10 @@ readKeyboardo() {
 NAV_RESULT=-1
 navigate() {
     local title="$1" hint="$2"
-    local -n _items="$3"
+    # local -n _items="$3"
+    local _items_name="$3"
+    local _items=()
+    eval "_items=(\"\${${_items_name}[@]}\")"
     local taken="${4:-0}" render_fn="${5:-}"
     local count=${#_items[@]}
     NAV_RESULT=-1

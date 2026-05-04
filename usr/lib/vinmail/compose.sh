@@ -142,7 +142,10 @@ showComposeState() {
 
 # ----- Attachment Manager -----
 manageAttachments() {
-    local -n _pa_list="$1"
+    # local -n _pa_list="$1"
+    local _pa_list_name="$1"
+    local _pa_list=()
+    eval "_pa_list=(\"\${${_pa_list_name}[@]}\")"
 
     while true; do
         echoHeader "Attachments"
@@ -194,9 +197,10 @@ manageAttachments() {
 
 # ----- GPG Setup -----
 setupGpgSign() {
-    local -n _sign_ref="$1"
-    local -n _key_ref="$2"
-
+    # local -n _sign_ref="$1"
+    # local -n _key_ref="$2"
+    local _sign_ref_name="$1"
+    local _key_ref_name="$2"
     if ! checkGpg; then warn "GPG not available."; sleep 2; return; fi
 
     local out
@@ -213,7 +217,9 @@ setupGpgSign() {
     [[ -z "$k" ]] && { warn "No key entered — signing disabled."; sleep 1; return; }
 
     if gpg --list-secret-keys "$k" &>/dev/null; then
-        _sign_ref="yes"; _key_ref="$k"
+        # _sign_ref="yes"; _key_ref="$k"
+        eval "$_sign_ref_name=\"yes\""
+        eval "$_key_ref_name=\"\$k\""
         ok "Will sign with: $k"
     else
         err "Key '${k}' not found."; warn "Signing disabled."
