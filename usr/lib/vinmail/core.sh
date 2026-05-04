@@ -91,8 +91,22 @@ detectTLSPhile() {
         /etc/ssl/certs/ca-certificates.crt
         /etc/pki/tls/certs/ca-bundle.crt
         /etc/ssl/ca-bundle.pem
+        /opt/homebrew/etc/openssl@3/cert.pem
+        /usr/local/etc/openssl@3/cert.pem
     )
-    for f in "${candidates[@]}"; do [[ -f "$f" ]] && echo "$f" && return; done
+
+    for f in "${candidates[@]}"; do
+        [[ -f "$f" ]] && echo "$f" && return
+    done
+
+    if [[ "$(uname)" == "Darwin" ]]; then
+        local tmp="/tmp/vinmail-cacert.pem"
+        security find-certificate -a -p \
+          /System/Library/Keychains/SystemRootCertificates.keychain > "$tmp"
+        echo "$tmp"
+        return
+    fi
+
     echo "/etc/ssl/certs/ca-certificates.crt"
 }
 

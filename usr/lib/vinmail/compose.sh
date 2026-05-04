@@ -36,8 +36,11 @@ BUILD_MSG=""
 buildMessage() {
     local from_name="$1" from_email="$2" to="$3" cc="$4" bcc="$5"
     local subject="$6" body_file="$7"
-    local -n _attachments="$8"
+    local _attachments_name="$8"
     local gpg_sign="$9" gpg_key="${10:-}"
+
+    local _attachments=()
+    eval "_attachments=(\"\${${_attachments_name}[@]}\")"
 
     local out; out=$(tmpFile ".eml")
     BUILD_MSG="$out"
