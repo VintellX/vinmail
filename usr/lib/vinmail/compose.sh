@@ -40,8 +40,7 @@ buildMessage() {
     local gpg_sign="$9" gpg_key="${10:-}"
 
     local _attachments=()
-    eval "_attachments=(\"\${${_attachments_name}[@]}\")"
-
+    eval "_attachments=(\"\${${_attachments_name}[@]+\${${_attachments_name}[@]}}\")"
     local out; out=$(tmpFile ".eml")
     BUILD_MSG="$out"
 
@@ -144,10 +143,11 @@ showComposeState() {
 manageAttachments() {
     # local -n _pa_list="$1"
     local _pa_list_name="$1"
-    local _pa_list=()
-    eval "_pa_list=(\"\${${_pa_list_name}[@]}\")"
 
     while true; do
+        local _pa_list=()
+        eval "_pa_list=(\"\${${_pa_list_name}[@]+\${${_pa_list_name}[@]}}\")"
+
         echoHeader "Attachments"
         echo -e "  ${DIM}Current:${RESET}"
         if [[ ${#_pa_list[@]} -eq 0 ]]; then
@@ -174,6 +174,7 @@ manageAttachments() {
                     err "Cannot read: $fpath"; sleep 1
                 else
                     _pa_list+=("$fpath")
+                    eval "${_pa_list_name}=(\"\${_pa_list[@]}\")"
                     ok "Added: $(basename "$fpath")"; sleep 1
                 fi
                 ;;
@@ -184,6 +185,7 @@ manageAttachments() {
                 if [[ "$ridx" =~ ^[0-9]+$ ]] && (( ridx < ${#_pa_list[@]} )); then
                     info "Removed: ${_pa_list[$ridx]}"
                     _pa_list=( "${_pa_list[@]:0:$ridx}" "${_pa_list[@]:$(( ridx + 1 ))}" )
+                    eval "${_pa_list_name}=(\"\${_pa_list[@]+\${_pa_list[@]}}\")"
                     sleep 1
                 else
                     err "Invalid index."; sleep 1
@@ -259,7 +261,7 @@ sendMail() {
     # ----- Compose loop -----
     while true; do
         local attach_display=""
-        if [[ ${#ATTACHMENTS[@]} -gt 0 ]]; then
+        if [[ ${#ATTACHMENTS[@]+"${#ATTACHMENTS[@]}"} -gt 0 ]]; then
             local names=()
             for f in "${ATTACHMENTS[@]}"; do names+=("$(basename "$f")"); done
             attach_display=$(printf '%s, ' "${names[@]}")
