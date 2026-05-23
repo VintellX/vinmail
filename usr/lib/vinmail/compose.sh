@@ -2,6 +2,16 @@
 # VinMail v1.1.0 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
+
+# ----- Safe Temp File -----
+safeTmpFile() {
+    local f
+    f=$(mktemp "${TMPDIR:-/tmp}/vinmail_XXXXXX${1:-}")
+    f=$(cd "$(dirname "$f")" && pwd)/$(basename "$f")
+    _TMPFILES+=("$f")
+    echo "$f"
+}
+
 # ----- MIME Helpers -----
 mimeBoundary() {
     printf "vinmail_%s_%s" "$(date +%s)" "$RANDOM"
@@ -41,7 +51,8 @@ buildMessage() {
 
     local _attachments=()
     eval "_attachments=(\"\${${_attachments_name}[@]+\${${_attachments_name}[@]}}\")"
-    local out; out=$(tmpFile ".eml")
+
+    local out; out=$(safeTmpFile ".eml")
     BUILD_MSG="$out"
 
     local boundary; boundary=$(mimeBoundary)
@@ -51,7 +62,7 @@ buildMessage() {
     # ----- GPG clearsign -----
     local sig_file=""
     if [[ "$gpg_sign" == "yes" ]]; then
-        local clearsigned; clearsigned=$(tmpFile ".asc")
+        local clearsigned; clearsigned=$(safeTmpFile ".asc")
         if gpg --yes --local-user "$gpg_key" \
                 --clearsign --output "$clearsigned" "$body_file" 2>/tmp/vinmail_sign_err; then
             sig_file="$clearsigned"
@@ -141,7 +152,6 @@ showComposeState() {
 
 # ----- Attachment Manager -----
 manageAttachments() {
-    # local -n _pa_list="$1"
     local _pa_list_name="$1"
 
     while true; do
@@ -199,10 +209,9 @@ manageAttachments() {
 
 # ----- GPG Setup -----
 setupGpgSign() {
-    # local -n _sign_ref="$1"
-    # local -n _key_ref="$2"
     local _sign_ref_name="$1"
     local _key_ref_name="$2"
+
     if ! checkGpg; then warn "GPG not available."; sleep 2; return; fi
 
     local out
@@ -219,7 +228,6 @@ setupGpgSign() {
     [[ -z "$k" ]] && { warn "No key entered — signing disabled."; sleep 1; return; }
 
     if gpg --list-secret-keys "$k" &>/dev/null; then
-        # _sign_ref="yes"; _key_ref="$k"
         eval "$_sign_ref_name=\"yes\""
         eval "$_key_ref_name=\"\$k\""
         ok "Will sign with: $k"
@@ -255,13 +263,16 @@ sendMail() {
     local to="" cc="" bcc="" subject=""
     local gpg_sign="no" gpg_key=""
     local ATTACHMENTS=()
-    local body_file; body_file=$(tmpFile ".txt")
-    printf "\n\nThanks and regards,\n%s" "$active_name" > "$body_file"
+
+    local body_file
+    body_file=$(safeTmpFile ".txt")
+    printf "\n\nThanks and regards,\n%s\n" "$active_name" > "$body_file"
 
     # ----- Compose loop -----
     while true; do
         local attach_display=""
-        if [[ ${#ATTACHMENTS[@]+"${#ATTACHMENTS[@]}"} -gt 0 ]]; then
+        # if [[ ${#ATTACHMENTS[@]+"${#ATTACHMENTS[@]}"} -gt 0 ]]; then
+        if [[ ${#ATTACHMENTS[@]} -gt 0 ]]; then
             local names=()
             for f in "${ATTACHMENTS[@]}"; do names+=("$(basename "$f")"); done
             attach_display=$(printf '%s, ' "${names[@]}")
