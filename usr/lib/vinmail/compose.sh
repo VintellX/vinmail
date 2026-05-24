@@ -5,9 +5,22 @@
 
 # ----- Safe Temp File -----
 safeTmpFile() {
-    local f
-    f=$(mktemp "${TMPDIR:-/tmp}/vinmail_XXXXXX${1:-}")
-    f=$(cd "$(dirname "$f")" && pwd)/$(basename "$f")
+    local ext="${1:-}" f
+    local base
+    base=$(mktemp "${TMPDIR:-/tmp}/vinmail_XXXXXX") || {
+        err "mktemp failed"; return 1
+    }
+    if [[ -n "$ext" ]]; then
+        mv "$base" "${base}${ext}"
+        f="${base}${ext}"
+    else
+        f="$base"
+    fi
+    if command -v realpath &>/dev/null; then
+        f=$(realpath "$f")
+    elif [[ "$(uname)" == "Darwin" ]]; then
+        f=$(perl -e 'use Cwd "abs_path"; print abs_path($ARGV[0])' "$f")
+    fi
     _TMPFILES+=("$f")
     echo "$f"
 }
@@ -264,8 +277,10 @@ sendMail() {
     local gpg_sign="no" gpg_key=""
     local ATTACHMENTS=()
 
-    local body_file
-    body_file=$(safeTmpFile ".txt")
+    local body_file; body_file=$(safeTmpFile ".txt")
+    [[ -z "$body_file" || ! -f "$body_file" ]] && {
+        err "Could not create temporary body file."; sleep 2; return
+    }
     printf "\n\nThanks and regards,\n%s\n" "$active_name" > "$body_file"
 
     # ----- Compose loop -----
