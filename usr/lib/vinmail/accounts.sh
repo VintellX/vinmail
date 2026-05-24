@@ -1,5 +1,5 @@
 #!/bin/bash
-# VinMail v1.1.0 - Terminal based Mail Manager
+# VinMail v1.1.1 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
 # ----- GPG -----
@@ -105,13 +105,20 @@ testAccount() {
 
 # ----- Read or Abort -----
 readOrAbort() {
-    local -n _rab_var="$1"
+    local _var_name="$1"
+    # local -n _rab_var="$1"
     local prompt="$2"
+    local _input
     echo -ne "  ${prompt}: "
-    read -r _rab_var
-    if [[ -z "$_rab_var" ]]; then
+    # read -r _rab_var
+    # if [[ -z "$_rab_var" ]]; then
+    #     info "Aborted."; sleep 1; return 1
+    # fi
+    read -r _input
+    if [[ -z "$_input" ]]; then
         info "Aborted."; sleep 1; return 1
     fi
+    eval "$_var_name=\"\$_input\""
     return 0
 }
 

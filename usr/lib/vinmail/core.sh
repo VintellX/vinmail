@@ -1,5 +1,5 @@
 #!/bin/bash
-# VinMail v1.1.0 - Terminal based Mail Manager
+# VinMail v1.1.1 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
 # ----- Paths -----
@@ -14,7 +14,7 @@ TEMPLATE_DIR="$(cd "$_lib_dir/../../share/vinmail" 2>/dev/null && pwd \
     || echo "/usr/share/vinmail")"
 LOCK_FILE="$VINMAIL_DIR/.lock"
 LOCK_DIR="$VINMAIL_DIR/.lockdir"
-VERSION="1.1.0"
+VERSION="1.1.1"
 SUBTITLE="Bash-ing out an email; Shell yeah, mail sent."
 
 # ----- Color Codos -----
@@ -90,8 +90,22 @@ detectTLSPhile() {
         /etc/ssl/certs/ca-certificates.crt
         /etc/pki/tls/certs/ca-bundle.crt
         /etc/ssl/ca-bundle.pem
+        /opt/homebrew/etc/openssl@3/cert.pem
+        /usr/local/etc/openssl@3/cert.pem
     )
-    for f in "${candidates[@]}"; do [[ -f "$f" ]] && echo "$f" && return; done
+
+    for f in "${candidates[@]}"; do
+        [[ -f "$f" ]] && echo "$f" && return
+    done
+
+    if [[ "$(uname)" == "Darwin" ]]; then
+        local tmp="/tmp/vinmail-cacert.pem"
+        security find-certificate -a -p \
+          /System/Library/Keychains/SystemRootCertificates.keychain > "$tmp"
+        echo "$tmp"
+        return
+    fi
+
     echo "/etc/ssl/certs/ca-certificates.crt"
 }
 
