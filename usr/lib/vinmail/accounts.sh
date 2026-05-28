@@ -1,5 +1,5 @@
 #!/bin/bash
-# VinMail v1.1.1 - Terminal based Mail Manager
+# VinMail v1.1.2 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
 # ----- GPG -----
@@ -7,10 +7,14 @@ checkGpg() {
     command -v gpg &>/dev/null || { err "gpg not found. Install gnupg."; return 1; }
 }
 
+gpgLog() {
+    echo -e "  ${GREEN}[GPG]${RESET} ${DIM}Using GPG authentication (passphrase may be required)...${RESET}"
+}
+
 gpgInfo() {
     local conf="$1"
     if grep -q "^passwordeval" "$conf" 2>/dev/null; then
-        echo -e "  ${GREEN}[GPG]${RESET} ${DIM}Using GPG authentication (passphrase may be required)...${RESET}"
+        gpgLog
     fi
 }
 
