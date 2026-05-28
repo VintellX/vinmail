@@ -372,6 +372,7 @@ sendMail() {
                 done
 
                 echo -e "\n  Sending..."
+                gpgInfo "$account_conf"
                 if msmtp --file="$MSMTPRC" -- "${all_rcpts[@]}" < "$BUILD_MSG"; then
                     ok "Mail sent to: ${to}${cc:+, ${cc}}${bcc:+ (+ bcc)}"
                 else
