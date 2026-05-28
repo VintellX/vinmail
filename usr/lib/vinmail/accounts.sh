@@ -1,10 +1,21 @@
 #!/bin/bash
-# VinMail v1.1.1 - Terminal based Mail Manager
+# VinMail v1.1.2 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
 # ----- GPG -----
 checkGpg() {
     command -v gpg &>/dev/null || { err "gpg not found. Install gnupg."; return 1; }
+}
+
+gpgLog() {
+    echo -e "  ${GREEN}[GPG]${RESET} ${DIM}Using GPG authentication (passphrase may be required)...${RESET}"
+}
+
+gpgInfo() {
+    local conf="$1"
+    if grep -q "^passwordeval" "$conf" 2>/dev/null; then
+        gpgLog
+    fi
 }
 
 # ----- Password Storage -----
@@ -94,12 +105,42 @@ fetchConfig() {
 # ----- Test Account -----
 testAccount() {
     echoHeader "Test: ${1}"
-    echo -e "  Testing SMTP connection...\n"
-    if msmtp --file="$ACCOUNTS_DIR/${1}.conf" --serverinfo 2>&1 | sed 's/^/  /'; then
-        echo; ok "Connection successful!"
+    echo -e "  Testing server connection and TLS...\n"
+    echo -e "  ${YELLOW}Note: server test does not verify your password.${RESET}\n"
+
+    gpgInfo "$ACCOUNTS_DIR/${1}.conf"
+    local server_output
+    server_output=$(msmtp --file="$ACCOUNTS_DIR/${1}.conf" --serverinfo 2>&1)
+    if echo "$server_output" | sed 's/^/  /' && [[ $? -eq 0 ]]; then
+        echo; ok "Server reachable and TLS working."
     else
-        echo; err "Connection failed."
+        echo "$server_output" | sed 's/^/  /'
+        echo; err "Connection failed. Check host / port / TLS settings."
+        pressAnyKey; return
     fi
+
+    echo
+    echo -ne "  Send a test mail to yourself to verify credentials? [y/N]: "
+    local do_auth; read -r do_auth
+    if [[ "$do_auth" =~ ^[Yy]$ ]]; then
+        local test_email
+        test_email=$(grep -E "^[[:space:]]*user[[:space:]]" "$ACCOUNTS_DIR/${1}.conf" \
+            | head -1 | awk '{print $2}')
+
+        echo -e "\n  ${DIM}Sending test mail to ${test_email}...${RESET}"
+        gpgInfo "$ACCOUNTS_DIR/${1}.conf"
+        local test_msg
+        test_msg=$(printf "Date: %s\nFrom: %s\nTo: %s\nSubject: VinMail connection test\n\nThis is a VinMail connection test.\n" \
+            "$(date -R)" "$test_email" "$test_email")
+
+        if echo "$test_msg" | msmtp --file="$ACCOUNTS_DIR/${1}.conf" "$test_email" 2>/tmp/vinmail_test_err; then
+            echo; ok "Authentication successful! Test mail sent to ${test_email}."
+        else
+            echo; err "Authentication failed:"
+            sed 's/^/  /' /tmp/vinmail_test_err >&2
+        fi
+    fi
+
     pressAnyKey
 }
 

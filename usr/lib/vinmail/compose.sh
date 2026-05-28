@@ -1,5 +1,5 @@
 #!/bin/bash
-# VinMail v1.1.1 - Terminal based Mail Manager
+# VinMail v1.1.2 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
 
@@ -76,6 +76,7 @@ buildMessage() {
     local sig_file=""
     if [[ "$gpg_sign" == "yes" ]]; then
         local clearsigned; clearsigned=$(safeTmpFile ".asc")
+        gpgLog
         if gpg --yes --local-user "$gpg_key" \
                 --clearsign --output "$clearsigned" "$body_file" 2>/tmp/vinmail_sign_err; then
             sig_file="$clearsigned"
@@ -372,6 +373,7 @@ sendMail() {
                 done
 
                 echo -e "\n  Sending..."
+                gpgInfo "$account_conf"
                 if msmtp --file="$MSMTPRC" -- "${all_rcpts[@]}" < "$BUILD_MSG"; then
                     ok "Mail sent to: ${to}${cc:+, ${cc}}${bcc:+ (+ bcc)}"
                 else
