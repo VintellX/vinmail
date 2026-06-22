@@ -57,8 +57,32 @@ vinify() {
     done
 }
 
+# ----- Dependency Check -----
+checkDeps() {
+    local hard=("msmtp" "sed" "awk" "grep" "base64")
+    for cmd in "${hard[@]}"; do
+        command -v "$cmd" >/dev/null 2>&1 || {
+            echo -e "${RED}  ✗ Missing required dependency: ${cmd}${RESET}"
+            echo -e "${DIM}  Install it and try again.${RESET}"
+            exit 1
+        }
+    done
+
+    local soft=("gpg" "file")
+    for cmd in "${soft[@]}"; do
+        command -v "$cmd" >/dev/null 2>&1 || {
+            warn "Optional dependency '${cmd}' not found."
+            case "$cmd" in
+                gpg)  info "GPG password encryption and mail signing will be unavailable." ;;
+                file) info "MIME type detection for attachments will fall back to application/octet-stream." ;;
+            esac
+        }
+    done
+}
+
 # ----- Run -----
 mkdir -p "$VINMAIL_DIR"
+checkDeps
 acquireLock
 init
 vinify
