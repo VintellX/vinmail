@@ -1,5 +1,5 @@
 #!/bin/bash
-# VinMail v1.1.1 - Terminal based Mail Manager
+# VinMail v1.1.2 - Terminal based Mail Manager
 # "Bash-ing out an email."
 set -uo pipefail
 
@@ -26,6 +26,8 @@ vinify() {
     )
     local count=${#options[@]} taken=0
 
+    tput civis 2>/dev/null || true
+
     while true; do
         echoMainHeader
         for i in "${!options[@]}"; do
@@ -39,13 +41,18 @@ vinify() {
             UP|k)     taken=$(( taken - 1 )); [[ $taken -lt 0 ]] && taken=$(( count - 1 )) ;;
             DOWN|j)   taken=$(( taken + 1 )); [[ $taken -ge count ]] && taken=0 ;;
             ""|$'\n')
+                tput cnorm 2>/dev/null || true 
                 case $taken in
                     0) switchAccount ;; 1) addAccount  ;;
                     2) editAccount   ;; 3) delAccount   ;;
                     4) sendMail      ;; 5) showStatus   ;;
                     6) echo -e "\n${DIM}  Goodbye.${RESET}\n"; exit 0 ;;
-                esac ;;
-            q|Q) echo -e "\n${DIM}  Goodbye.${RESET}\n"; exit 0 ;;
+                esac
+                tput civis 2>/dev/null || true
+                ;;
+            q|Q)
+                tput cnorm 2>/dev/null || true
+                echo -e "\n${DIM}  Goodbye.${RESET}\n"; exit 0 ;;
         esac
     done
 }
