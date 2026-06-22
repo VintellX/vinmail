@@ -310,10 +310,22 @@ sendMail() {
         echo -ne "\n  Action: "; local action; read -r action
 
         case "$action" in
-            t|T) echo -ne "  ${CYAN}To${RESET}: ";      read -r to ;;
-            c|C) echo -ne "  ${CYAN}Cc${RESET}: ";      read -r cc ;;
-            b|B) echo -ne "  ${CYAN}Bcc${RESET}: ";     read -r bcc ;;
-            s|S) echo -ne "  ${CYAN}Subject${RESET}: "; read -r subject ;;
+            t|T)
+                echo -ne "  ${CYAN}To${RESET}: "
+                read -e -i "$to" -r to
+                ;;
+            c|C)
+                echo -ne "  ${CYAN}Cc${RESET}: "
+                read -e -i "$cc" -r cc
+                ;;
+            b|B)
+                echo -ne "  ${CYAN}Bcc${RESET}: "
+                read -e -i "$bcc" -r bcc
+                ;;
+            s|S)
+                echo -ne "  ${CYAN}Subject${RESET}: "
+                read -e -i "$subject" -r subject
+                ;;
             e|E) "$EDITOR" "$body_file" ;;
             a|A) manageAttachments ATTACHMENTS ;;
             g|G)
@@ -353,7 +365,9 @@ sendMail() {
                 [[ -n "$attach_display" ]] && echo -e "  ${CYAN}Attach :${RESET} ${attach_display}"
                 [[ "$gpg_sign" == "yes" ]] && echo -e "  ${CYAN}GPG    :${RESET} ${GREEN}signed${RESET}"
                 echo -e "\n  --> Body preview <--"
-                head -5 "$body_file" | sed 's/^/  /'
+                local ttyWidth
+                ttyWidth=$(tput cols 2>/dev/null || echo 80)
+                cat "$body_file" | fold -s -w $(( ttyWidth - 4 )) | sed 's/^/  /'
                 echo -e "  --->><<---"
 
                 echo -ne "\n  ${YELLOW}Confirm send? [Y/n]: ${RESET}"
