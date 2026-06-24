@@ -12,23 +12,31 @@ source "$LIB/core.sh"
 source "$LIB/ui.sh"
 source "$LIB/accounts.sh"
 source "$LIB/compose.sh"
+source "$LIB/drafts.sh"
 
 # ----- Main Menu -----
 vinify() {
-    local options=(
-        "Switch active account"
-        "Add account"
-        "Edit / Rename / Test"
-        "Delete account"
-        "Compose & send mail"
-        "Status"
-        "Quit"
-    )
-    local count=${#options[@]} taken=0
+    local taken=0
 
     tput civis 2>/dev/null || true
 
     while true; do
+        local d_count; d_count=$(draftCount)
+        local draft_label="Drafts"
+        [[ "$d_count" -gt 0 ]] && draft_label="Drafts (${d_count})"
+
+        local options=(
+            "Switch active account"
+            "Add account"
+            "Edit / Rename / Test"
+            "Delete account"
+            "Compose & send mail"
+            "$draft_label"
+            "Status"
+            "Quit"
+        )
+        local total=${#options[@]}
+
         echoMainHeader
         for i in "${!options[@]}"; do
             [[ $i -eq $taken ]] \
@@ -38,15 +46,16 @@ vinify() {
 
         readKeyboardo
         case "$KEY" in
-            UP|k)     taken=$(( taken - 1 )); [[ $taken -lt 0 ]] && taken=$(( count - 1 )) ;;
-            DOWN|j)   taken=$(( taken + 1 )); [[ $taken -ge count ]] && taken=0 ;;
+            UP|k)   taken=$(( taken - 1 )); [[ $taken -lt 0 ]] && taken=$(( total - 1 )) ;;
+            DOWN|j) taken=$(( taken + 1 )); [[ $taken -ge total ]] && taken=0 ;;
             ""|$'\n')
                 tput cnorm 2>/dev/null || true 
                 case $taken in
                     0) switchAccount ;; 1) addAccount  ;;
-                    2) editAccount   ;; 3) delAccount   ;;
-                    4) sendMail      ;; 5) showStatus   ;;
-                    6) echo -e "\n${DIM}  Goodbye.${RESET}\n"; exit 0 ;;
+                    2) editAccount   ;; 3) delAccount  ;;
+                    4) sendMail      ;; 5) showDrafts  ;;
+                    6) showStatus    ;;
+                    7) echo -e "\n${DIM}  Goodbye.${RESET}\n"; exit 0 ;;
                 esac
                 tput civis 2>/dev/null || true
                 ;;
