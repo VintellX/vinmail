@@ -90,5 +90,97 @@ deleteDraft() {
     rm -f "$draft_file" "$body_file"
 }
 
+# ----- draft label for array -----
+_draftLabel() {
+    local draft_file="$1"
+    local subject saved
+    subject=$(grep "^SUBJECT=" "$draft_file" | cut -d'=' -f2-)
+    saved=$(grep "^SAVED=" "$draft_file" | cut -d'=' -f2-)
+    subject="${subject:-(no subject)}"
+    printf "%-35s %s" "$subject" "$saved"
+}
+ 
+# ----- drafto renderer -----
+_draft_render() {
+    local i="$1" taken="$2"
+    local label="${DRAFT_LABELS[$i]}"
+    if [[ $i -eq $taken ]]; then
+        echo -e "  ${GREEN}▶  ${BOLD}${label}${RESET}"
+    else
+        echo -e "     ${label}"
+    fi
+}
 # ----- Show Drafts -----
-showDrafts() {}
+showDrafts() {
+    initDrafts
+ 
+    local DRAFT_FILES=()
+    while IFS= read -r -d '' f; do
+        DRAFT_FILES+=("$f")
+    done < <(find "$DRAFTS_DIR" -maxdepth 1 -name "*.draft" -print0 2>/dev/null | sort -z)
+ 
+    if [[ ${#DRAFT_FILES[@]} -eq 0 ]]; then
+        echoHeader "Drafts"
+        echo -e "  ${DIM}No drafts saved.${RESET}"
+        pressAnyKey; return
+    fi
+ 
+    local DRAFT_LABELS=()
+    for f in "${DRAFT_FILES[@]}"; do
+        DRAFT_LABELS+=("$(_draftLabel "$f")")
+    done
+ 
+    while true; do
+        navigate "Drafts" "↑/k · ↓/j · Enter open · q back" \
+            DRAFT_LABELS 0 "_draft_render"
+ 
+        local idx=$NAV_RESULT
+        [[ $idx -lt 0 ]] && return
+ 
+        local selected_draft="${DRAFT_FILES[$idx]}"
+ 
+        # drafto actions 
+        echoHeader "Draft"
+        echo -e "  $(_draftLabel "$selected_draft")\n"
+        echo -e "  ${BOLD}[o]${RESET} Open and continue editing"
+        echo -e "  ${BOLD}[d]${RESET} Delete draft"
+        echo -e "  ${BOLD}[q]${RESET} Back"
+        echo -ne "\n  Choice: "; local c; read -r c
+ 
+        case "$c" in
+            o|O)
+                loadDraft "$selected_draft" || continue
+                sendMailFromDraft "$selected_draft"
+                DRAFT_FILES=()
+                while IFS= read -r -d '' f; do
+                    DRAFT_FILES+=("$f")
+                done < <(find "$DRAFTS_DIR" -maxdepth 1 -name "*.draft" -print0 2>/dev/null | sort -z)
+                [[ ${#DRAFT_FILES[@]} -eq 0 ]] && return
+                DRAFT_LABELS=()
+                for f in "${DRAFT_FILES[@]}"; do
+                    DRAFT_LABELS+=("$(_draftLabel "$f")")
+                done
+                ;;
+            d|D)
+                echo -ne "  ${RED}Delete this draft? [y/N]: ${RESET}"
+                local confirm; read -r confirm
+                if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                    deleteDraft "$selected_draft"
+                    ok "Draft deleted."; sleep 1
+                    # refresh
+                    DRAFT_FILES=()
+                    while IFS= read -r -d '' f; do
+                        DRAFT_FILES+=("$f")
+                    done < <(find "$DRAFTS_DIR" -maxdepth 1 -name "*.draft" -print0 2>/dev/null | sort -z)
+                    [[ ${#DRAFT_FILES[@]} -eq 0 ]] && return
+                    DRAFT_LABELS=()
+                    for f in "${DRAFT_FILES[@]}"; do
+                        DRAFT_LABELS+=("$(_draftLabel "$f")")
+                    done
+                fi
+                ;;
+            q|Q) return ;;
+            *) warn "Enter o, d, or q." ;;
+        esac
+    done
+}
