@@ -113,74 +113,95 @@ _draft_render() {
 # ----- Show Drafts -----
 showDrafts() {
     initDrafts
- 
-    local DRAFT_FILES=()
-    while IFS= read -r -d '' f; do
-        DRAFT_FILES+=("$f")
-    done < <(find "$DRAFTS_DIR" -maxdepth 1 -name "*.draft" -print0 2>/dev/null | sort -z)
- 
-    if [[ ${#DRAFT_FILES[@]} -eq 0 ]]; then
-        echoHeader "Drafts"
-        echo -e "  ${DIM}No drafts saved.${RESET}"
-        pressAnyKey; return
-    fi
- 
-    local DRAFT_LABELS=()
-    for f in "${DRAFT_FILES[@]}"; do
-        DRAFT_LABELS+=("$(_draftLabel "$f")")
-    done
- 
+
     while true; do
-        navigate "Drafts" "↑/k · ↓/j · Enter open · q back" \
-            DRAFT_LABELS 0 "_draft_render"
- 
-        local idx=$NAV_RESULT
-        [[ $idx -lt 0 ]] && return
- 
-        local selected_draft="${DRAFT_FILES[$idx]}"
- 
-        # drafto actions 
-        echoHeader "Draft"
-        echo -e "  $(_draftLabel "$selected_draft")\n"
-        echo -e "  ${BOLD}[o]${RESET} Open and continue editing"
-        echo -e "  ${BOLD}[d]${RESET} Delete draft"
-        echo -e "  ${BOLD}[q]${RESET} Back"
-        echo -ne "\n  Choice: "; local c; read -r c
- 
-        case "$c" in
-            o|O)
-                loadDraft "$selected_draft" || continue
-                sendMailFromDraft "$selected_draft"
-                DRAFT_FILES=()
-                while IFS= read -r -d '' f; do
-                    DRAFT_FILES+=("$f")
-                done < <(find "$DRAFTS_DIR" -maxdepth 1 -name "*.draft" -print0 2>/dev/null | sort -z)
-                [[ ${#DRAFT_FILES[@]} -eq 0 ]] && return
-                DRAFT_LABELS=()
-                for f in "${DRAFT_FILES[@]}"; do
-                    DRAFT_LABELS+=("$(_draftLabel "$f")")
-                done
-                ;;
-            d|D)
-                echo -ne "  ${RED}Delete this draft? [y/N]: ${RESET}"
-                local confirm; read -r confirm
-                if [[ "$confirm" =~ ^[Yy]$ ]]; then
-                    deleteDraft "$selected_draft"
-                    ok "Draft deleted."; sleep 1
-                    # refresh
-                    DRAFT_FILES=()
-                    while IFS= read -r -d '' f; do
-                        DRAFT_FILES+=("$f")
-                    done < <(find "$DRAFTS_DIR" -maxdepth 1 -name "*.draft" -print0 2>/dev/null | sort -z)
-                    [[ ${#DRAFT_FILES[@]} -eq 0 ]] && return
-                    DRAFT_LABELS=()
-                    for f in "${DRAFT_FILES[@]}"; do
-                        DRAFT_LABELS+=("$(_draftLabel "$f")")
-                    done
+        local DRAFT_FILES=()
+        while IFS= read -r -d '' f; do
+            DRAFT_FILES+=("$f")
+        done < <(find "$DRAFTS_DIR" -maxdepth 1 -name "*.draft" -print0 2>/dev/null | sort -z)
+
+        if [[ ${#DRAFT_FILES[@]} -eq 0 ]]; then
+            echoHeader "Drafts"
+            echo -e "  ${DIM}No drafts saved.${RESET}"
+            pressAnyKey; return
+        fi
+
+        local DRAFT_LABELS=()
+        for f in "${DRAFT_FILES[@]}"; do
+            DRAFT_LABELS+=("$(_draftLabel "$f")")
+        done
+
+        local taken=0 count=${#DRAFT_FILES[@]}
+        tput civis 2>/dev/null || true
+
+        while true; do
+            echoHeader "Drafts"
+            echo -e "  ${DIM}↑/k up · ↓/j down · Enter open · d delete · q back${RESET}\n"
+            for i in "${!DRAFT_LABELS[@]}"; do
+                if [[ $i -eq $taken ]]; then
+                    echo -e "  ${GREEN}▶  ${BOLD}${DRAFT_LABELS[$i]}${RESET}"
+                else
+                    echo -e "     ${DRAFT_LABELS[$i]}"
                 fi
-                ;;
-            q|Q) return ;;
-            *) warn "Enter o, d, or q." ;;
-        esac
+            done
+
+            readKeyboardo
+            case "$KEY" in
+                UP|k)
+                    taken=$(( taken - 1 ))
+                    [[ $taken -lt 0 ]] && taken=$(( count - 1 ))
+                    ;;
+                DOWN|j)
+                    taken=$(( taken + 1 ))
+                    [[ $taken -ge $count ]] && taken=0
+                    ;;
+                d|D)
+                    tput cnorm 2>/dev/null || true
+                    echo -ne "\n  ${RED}Delete this draft? [y/N]: ${RESET}"
+                    local confirm; read -r confirm
+                    if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                        deleteDraft "${DRAFT_FILES[$taken]}"
+                        ok "Draft deleted."; sleep 1
+                    fi
+                    break
+                    ;;
+                ""|$'\n')
+                    tput cnorm 2>/dev/null || true
+                    local selected_draft="${DRAFT_FILES[$taken]}"
+
+                    while true; do
+                        echoHeader "Draft"
+                        echo -e "  $(_draftLabel "$selected_draft")\n"
+                        echo -e "  ${BOLD}[o]${RESET} Open and continue editing"
+                        echo -e "  ${BOLD}[d]${RESET} Delete draft"
+                        echo -e "  ${BOLD}[q]${RESET} Back to drafts"
+                        echo -ne "\n  Choice: "; local c; read -r c
+
+                        case "$c" in
+                            o|O)
+                                sendMailFromDraft "$selected_draft"
+                                break
+                                ;;
+                            d|D)
+                                echo -ne "  ${RED}Delete this draft? [y/N]: ${RESET}"
+                                local dc; read -r dc
+                                if [[ "$dc" =~ ^[Yy]$ ]]; then
+                                    deleteDraft "$selected_draft"
+                                    ok "Draft deleted."; sleep 1
+                                    break
+                                fi
+                                ;;
+                            q|Q) break ;;
+                            *) warn "Enter o, d, or q." ;;
+                        esac
+                    done
+                    break
+                    ;;
+                q|Q)
+                    tput cnorm 2>/dev/null || true
+                    return
+                    ;;
+            esac
+        done
     done
 }
