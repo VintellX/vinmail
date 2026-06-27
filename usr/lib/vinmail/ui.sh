@@ -5,20 +5,22 @@
 # ----- Keyboard Reader (arrows + j/k) -----
 KEY=""
 readKeyboardo() {
-    local char seq1 seq2
-    IFS= read -rsn1 char
-    if [[ "$char" == $'\x1b' ]]; then
-        IFS= read -rsn1 -t 0.15 seq1 2>/dev/null || seq1=""
-        IFS= read -rsn1 -t 0.15 seq2 2>/dev/null || seq2=""
-        case "${seq1}${seq2}" in
-            '[A') KEY="UP"    ;;
-            '[B') KEY="DOWN"  ;;
-            '[C') KEY="RIGHT" ;;
-            '[D') KEY="LEFT"  ;;
-            *)    KEY="ESC"   ;;
+    local c seq
+    IFS= read -rsn1 c
+    if [[ $c == $'\e' ]]; then
+        seq=""
+        while IFS= read -rsn1 -t 0.02 c; do
+            seq+="$c"
+        done
+        case "$seq" in
+            "[A"|OA) KEY="UP" ;;
+            "[B"|OB) KEY="DOWN" ;;
+            "[C"|OC) KEY="RIGHT" ;;
+            "[D"|OD) KEY="LEFT" ;;
+            *) KEY="ESC" ;;
         esac
     else
-        KEY="$char"
+        KEY="$c"
     fi
 }
 
