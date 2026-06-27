@@ -19,9 +19,9 @@ SUBTITLE="Bash-ing out an email; Shell yeah, mail sent."
 
 # ----- Color Codos -----
 if [[ -t 1 ]]; then
-    RED="\033[31m";     GREEN="\033[32m"
-    YELLOW="\033[33m";  CYAN="\033[36m"
-    BOLD="\033[1m";     DIM="\033[2m"; RESET="\033[0m"
+    RED=$'\e[31m';     GREEN=$'\e[32m'
+    YELLOW=$'\e[33m';  CYAN=$'\e[36m'
+    BOLD=$'\e[1m';     DIM=$'\e[2m'; RESET=$'\e[0m'
 else
     RED=""; GREEN=""; YELLOW=""; CYAN=""
     BOLD=""; DIM=""; RESET=""
@@ -158,4 +158,30 @@ rmMeta() {
     local tmp; tmp=$(mktemp)
     grep -v "^${1}|" "$META_FILE" > "$tmp" || true
     mv "$tmp" "$META_FILE"
+}
+
+# ----- read with prefill (bash 3.2 compatible) -----
+readPrefill() {
+    local _var_name="$1"
+    local _prompt="$2"
+    local _current="$3"
+    local _input
+
+    tput cnorm 2>/dev/null || true
+
+    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+        local _rl_prompt="${_prompt//$'\e'/$'\001\e'}"; _rl_prompt="${_rl_prompt//$'m'/$'m\002'}"
+        read -e -i "$_current" -r -p "  ${_rl_prompt}: " _input
+        printf -v "$_var_name" '%s' "$_input"
+    else
+        # bash 3.2 fallback
+        echo -ne "  ${_prompt} [${_current}]: "
+        read -r _input
+        if [[ -z "$_input" ]]; then
+            eval "$_var_name=\"\$_current\""
+            echo "$_current"
+        else
+            eval "$_var_name=\"\$_input\""
+        fi
+    fi
 }
