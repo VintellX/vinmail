@@ -76,17 +76,45 @@ checkDeps() {
             exit 1
         }
     done
+    local bash_major="${BASH_VERSINFO[0]}"
+    local warnings=()
+
+    if [[ "$bash_major" -lt 4 ]]; then
+        warnings+=("${YELLOW}  ! bash 4+ not found (running ${BASH_VERSION})${RESET}")
+        warnings+=("${DIM}    Some features like inline editing may be limited.${RESET}")
+        warnings+=("${DIM}    Install: brew install bash (macOS) or upgrade your system bash.${RESET}")
+    fi
 
     local soft=("gpg" "file")
     for cmd in "${soft[@]}"; do
         command -v "$cmd" >/dev/null 2>&1 || {
-            warn "Optional dependency '${cmd}' not found."
             case "$cmd" in
-                gpg)  info "GPG password encryption and mail signing will be unavailable." ;;
-                file) info "MIME type detection for attachments will fall back to application/octet-stream." ;;
+                gpg)
+                    warnings+=("${YELLOW}  ! gpg not found${RESET}")
+                    warnings+=("${DIM}    GPG password encryption and mail signing will be unavailable.${RESET}")
+                    ;;
+                file)
+                    warnings+=("${YELLOW}  ! file not found${RESET}")
+                    warnings+=("${DIM}    MIME type detection will fall back to application/octet-stream.${RESET}")
+                    ;;
             esac
         }
     done
+
+    if [[ ${#warnings[@]} -gt 0 ]]; then
+        clear
+        echo -e "${CYAN}${BOLD}"
+        echo "  ╔════════════════════════════════════╗"
+        echo "  ║         VinMail - Startup          ║"
+        echo "  ╚════════════════════════════════════╝"
+        echo -e "${RESET}\n"
+        for line in "${warnings[@]}"; do
+            echo -e "$line"
+        done
+        echo
+        echo -ne "  ${DIM}Press Enter to continue...${RESET}"
+        read -r
+    fi
 }
 
 # ----- Run -----

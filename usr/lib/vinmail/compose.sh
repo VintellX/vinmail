@@ -380,22 +380,10 @@ _composeLoop() {
         echo -ne "\n  Action: "; local action; read -r action
  
         case "$action" in
-            t|T)
-                echo -ne "  ${CYAN}To${RESET}: "
-                read -e -i "$to" -r to
-                ;;
-            c|C)
-                echo -ne "  ${CYAN}Cc${RESET}: "
-                read -e -i "$cc" -r cc
-                ;;
-            b|B)
-                echo -ne "  ${CYAN}Bcc${RESET}: "
-                read -e -i "$bcc" -r bcc
-                ;;
-            s|S)
-                echo -ne "  ${CYAN}Subject${RESET}: "
-                read -e -i "$subject" -r subject
-                ;;
+            t|T) readPrefill to "${CYAN}To${RESET}" "$to" ;;
+            c|C) readPrefill cc "${CYAN}Cc${RESET}" "$cc" ;;
+            b|B) readPrefill bcc "${CYAN}Bcc${RESET}" "$bcc" ;;
+            s|S) readPrefill subject "${CYAN}Subject${RESET}" "$subject" ;;
             e|E) "$EDITOR" "$body_file" ;;
             a|A) manageAttachments ATTACHMENTS ;;
             d|D)
