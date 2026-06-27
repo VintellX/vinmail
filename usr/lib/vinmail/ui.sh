@@ -5,14 +5,17 @@
 # ----- Keyboard Reader (arrows + j/k) -----
 KEY=""
 readKeyboardo() {
-    local char seq
+    local char seq1 seq2
     IFS= read -rsn1 char
     if [[ "$char" == $'\x1b' ]]; then
-        IFS= read -rsn2 -t 0.15 seq 2>/dev/null || seq=""
-        case "$seq" in
-            '[A') KEY="UP"   ;; '[B') KEY="DOWN"  ;;
-            '[C') KEY="RIGHT";; '[D') KEY="LEFT"   ;;
-            *)    KEY="ESC"  ;;
+        IFS= read -rsn1 -t 0.15 seq1 2>/dev/null || seq1=""
+        IFS= read -rsn1 -t 0.15 seq2 2>/dev/null || seq2=""
+        case "${seq1}${seq2}" in
+            '[A') KEY="UP"    ;;
+            '[B') KEY="DOWN"  ;;
+            '[C') KEY="RIGHT" ;;
+            '[D') KEY="LEFT"  ;;
+            *)    KEY="ESC"   ;;
         esac
     else
         KEY="$char"
