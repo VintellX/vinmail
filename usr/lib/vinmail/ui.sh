@@ -5,20 +5,31 @@
 # ----- Keyboard Reader (arrows + j/k) -----
 KEY=""
 readKeyboardo() {
-    local c seq
+    local c
     IFS= read -rsn1 c
     if [[ $c == $'\e' ]]; then
-        seq=""
-        while IFS= read -rsn1 -t 0.02 c; do
-            seq+="$c"
-        done
-        case "$seq" in
-            "[A"|OA) KEY="UP" ;;
-            "[B"|OB) KEY="DOWN" ;;
-            "[C"|OC) KEY="RIGHT" ;;
-            "[D"|OD) KEY="LEFT" ;;
-            *) KEY="ESC" ;;
-        esac
+        IFS= read -rsn1 c
+        if [[ $c == "[" ]]; then
+            IFS= read -rsn1 c
+            case "$c" in
+                A) KEY="UP" ;;
+                B) KEY="DOWN" ;;
+                C) KEY="RIGHT" ;;
+                D) KEY="LEFT" ;;
+                *) KEY="ESC" ;;
+            esac
+        elif [[ $c == "O" ]]; then
+            IFS= read -rsn1 c
+            case "$c" in
+                A) KEY="UP" ;;
+                B) KEY="DOWN" ;;
+                C) KEY="RIGHT" ;;
+                D) KEY="LEFT" ;;
+                *) KEY="ESC" ;;
+            esac
+        else
+            KEY="ESC"
+        fi
     else
         KEY="$c"
     fi
