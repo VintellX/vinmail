@@ -160,6 +160,62 @@ rmMeta() {
     mv "$tmp" "$META_FILE"
 }
 
+# ----- smart read -----
+smartRead() {
+    local _var_name="$1"
+    local _current="${2:-}"
+    local _input="$_current"
+    local char
+
+    tput cnorm 2>/dev/null || true
+
+    # print prefill if any (i'll most likely remove this if it doesn't work like i want it to)
+    echo -ne "$_current"
+
+    while true; do
+        IFS= read -rsn1 char
+
+        case "$char" in
+            $'\x1b')
+                local seq1 seq2
+                IFS= read -rsn1 -t 0.05 seq1 2>/dev/null || seq1=""
+                IFS= read -rsn1 -t 0.05 seq2 2>/dev/null || seq2=""
+
+                if [[ -n "$seq1" ]]; then
+                    continue
+                fi
+
+                echo -ne "\n  ${YELLOW}Abort? [y/N]: ${RESET}"
+                local confirm
+                IFS= read -r confirm
+                if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                    return 1
+                fi
+
+                echo -ne "  $_input"
+                ;;
+
+            $'\x7f'|$'\b')
+                if [[ ${#_input} -gt 0 ]]; then
+                    _input="${_input%?}"
+                    echo -ne "\b \b"
+                fi
+                ;;
+
+            "")
+                echo
+                eval "$_var_name=\"\$_input\""
+                return 0
+                ;;
+
+            *)
+                _input+="$char"
+                echo -ne "$char"
+                ;;
+        esac
+    done
+}
+
 # ----- read with prefill (bash 3.2 compatible) -----
 readPrefill() {
     local _var_name="$1"
@@ -170,18 +226,14 @@ readPrefill() {
     tput cnorm 2>/dev/null || true
 
     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-        local _rl_prompt="${_prompt//$'\e'/$'\001\e'}"; _rl_prompt="${_rl_prompt//$'m'/$'m\002'}"
+        local _rl_prompt="${_prompt//$'\e'/$'\001\e'}"
+        _rl_prompt="${_rl_prompt//$'m'/$'m\002'}"
         read -e -i "$_current" -r -p "  ${_rl_prompt}: " _input
         printf -v "$_var_name" '%s' "$_input"
     else
         # bash 3.2 fallback
-        echo -ne "  ${_prompt} [${_current}]: "
-        read -r _input
-        if [[ -z "$_input" ]]; then
-            eval "$_var_name=\"\$_current\""
-            echo "$_current"
-        else
-            eval "$_var_name=\"\$_input\""
-        fi
+        echo -ne "  ${_prompt}: "
+        smartRead "$_var_name" "$_current"
+        return $?
     fi
 }

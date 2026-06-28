@@ -354,6 +354,8 @@ _composeLoop() {
     local gpg_key="${10:-}"
     local body_file="${11}"
     local source_draft="${12:-}"   # set if opened from a draft
+
+    local _draft_saved=0 # tracking state :)
  
     while true; do
         local attach_display=""
@@ -380,11 +382,25 @@ _composeLoop() {
         echo -ne "\n  Action: "; local action; read -r action
  
         case "$action" in
-            t|T) readPrefill to "${CYAN}To${RESET}" "$to" ;;
-            c|C) readPrefill cc "${CYAN}Cc${RESET}" "$cc" ;;
-            b|B) readPrefill bcc "${CYAN}Bcc${RESET}" "$bcc" ;;
-            s|S) readPrefill subject "${CYAN}Subject${RESET}" "$subject" ;;
-            e|E) "$EDITOR" "$body_file" ;;
+            t|T)
+                readPrefill to "${CYAN}To${RESET}" "$to"
+                _draft_saved=0
+                ;;
+            c|C)
+                readPrefill cc "${CYAN}Cc${RESET}" "$cc"
+                _draft_saved=0
+                ;;
+            b|B)
+                readPrefill bcc "${CYAN}Bcc${RESET}" "$bcc"
+                _draft_saved=0
+                ;;
+            s|S)
+                readPrefill subject "${CYAN}Subject${RESET}" "$subject"
+                _draft_saved=0;;
+            e|E)
+                "$EDITOR" "$body_file"
+                _draft_saved=0
+                ;;
             a|A) manageAttachments ATTACHMENTS ;;
             d|D)
                 saveDraft "$to" "$cc" "$bcc" "$subject" \
@@ -394,6 +410,7 @@ _composeLoop() {
                     deleteDraft "$source_draft"
                     source_draft=""
                 fi
+                _draft_saved=1
                 ;;
             g|G)
                 if [[ "$gpg_sign" == "yes" ]]; then
@@ -466,10 +483,14 @@ _composeLoop() {
                 sleep 2; return
                 ;;
             q|Q)
-                echo -ne "\n  Discard draft? [y/N]: "; local dis; read -r dis
-                [[ "$dis" =~ ^[Yy]$ ]] && { info "Discarded."; sleep 1; return; }
+                if [[ $_draft_saved -eq 1 ]]; then
+                    info "Draft saved. Returning to menu."; sleep 1; return
+                else
+                    echo -ne "\n  Discard draft? [y/N]: "
+                    local dis; read -r dis
+                    [[ "$dis" =~ ^[Yy]$ ]] && { info "Discarded."; sleep 1; return; }
+                fi
                 ;;
-            *) warn "Unknown action." ;;
         esac
     done
 }
