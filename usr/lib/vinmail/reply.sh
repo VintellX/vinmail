@@ -1,16 +1,14 @@
 #!/bin/bash
-
-# (might remove this feat if it doesn't work well, but it should be a nice feature)
-
-# reply from an existing .eml...
-# basically parse the mail, prefill compose and send it back
-# let's check 
-
+# VinMail v1.1.2 - Terminal based Mail Manager
+# "Bash-ing out an email."
 
 # ----- Parse EML -----
 parseEml() {
     local eml_file="$1"
-
+    local normalized_eml; normalized_eml=$(safeTmpFile ".eml")
+    tr -d '\r' < "$eml_file" > "$normalized_eml"
+    eml_file="$normalized_eml"
+    # ----- Headers -----
     EML_FROM=""
     EML_TO=""
     EML_CC=""
@@ -19,7 +17,7 @@ parseEml() {
     EML_REFERENCES=""
     EML_DATE=""
     EML_BODY_FILE=""
-    
+ 
     local current_header="" current_value=""
     while IFS= read -r line; do
         [[ -z "$line" ]] && break
@@ -35,7 +33,7 @@ parseEml() {
         fi
     done < "$eml_file"
     [[ -n "$current_header" ]] && _setEmlHeader "$current_header" "$current_value"
-
+ 
     local body_file; body_file=$(safeTmpFile ".txt")
     EML_BODY_FILE="$body_file"
  
@@ -106,44 +104,125 @@ extractName() {
     fi
 }
 
-# quote the original body
-#
-# On ...
-# > hello
-# > world
 quoteBody() {
     local body_file="$1"
     local from="$2"
     local date="$3"
-
-
-    return 0
+    local quoted_file; quoted_file=$(safeTmpFile ".txt")
+ 
+    {
+        echo ""
+        echo ""
+        echo "> On ${date} ${from} wrote:"
+        while IFS= read -r line; do
+            echo "> ${line}"
+        done < "$body_file"
+    } > "$quoted_file"
+ 
+    echo "$quoted_file"
 }
 
-# how it should be:
-# user picks an .eml
-# parse it
-# ask reply / reply all
-# build headers
-# open compose with quote already there
-# till now i can think of it only, let's see :/
 replyToMail() {
-
-    # active account checks...
-
-    # ask for eml
-
-    # parse it
-
-    # build:
-    #   to
-    #   subject
-    #   in-reply-to
-    #   references
-
-    # quote body
-
-    # compose loop
-
-    return 0
+    local active; active=$(fetchActive)
+    if [[ -z "$active" ]]; then
+        err "No active account. Switch to one first."; sleep 2; return
+    fi
+ 
+    local account_conf="$ACCOUNTS_DIR/${active}.conf"
+    if [[ ! -f "$account_conf" ]]; then
+        err "Config not found for '${active}'. Try switching again."; sleep 2; return
+    fi
+ 
+    cp "$account_conf" "$MSMTPRC"
+    chmod 600 "$MSMTPRC"
+ 
+    local active_email active_name
+    active_email=$(grep -E "^[[:space:]]*user[[:space:]]" "$account_conf" \
+        | head -1 | awk '{print $2}' || echo "")
+    active_name=$(grep -E "^[[:space:]]*from[[:space:]]" "$account_conf" \
+        | head -1 | sed 's/^[[:space:]]*from[[:space:]]*//' | tr -d '"' || echo "")
+    [[ -z "$active_name" ]] && active_name="$active_email"
+ 
+    echoHeader "Reply to Mail"
+    echo -e "  ${DIM}Provide the original mail as a .eml file.${RESET}"
+    echo -e "  ${DIM}Most mail clients: File → Save As → .eml${RESET}\n"
+    echo -ne "  ${CYAN}Path to .eml file${RESET}: "
+ 
+    local eml_path
+    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+        read -e -r eml_path
+    else
+        read -r eml_path
+    fi
+ 
+    eml_path="${eml_path/#\~/$HOME}"
+ 
+    if [[ -z "$eml_path" ]]; then
+        err "No file provided."; sleep 2; return
+    fi
+    if [[ ! -f "$eml_path" ]]; then
+        err "File not found: $eml_path"; sleep 2; return
+    fi
+    if [[ "${eml_path##*.}" != "eml" ]]; then
+        warn "File doesn't have .eml extension; trying anyway."
+        sleep 1
+    fi
+ 
+    echo -e "\n  ${DIM}Parsing...${RESET}"
+    parseEml "$eml_path"
+ 
+    echoHeader "Reply to Mail"
+    echo -e "  ${DIM}Parsed from original:${RESET}\n"
+    echo -e "  ${DIM}From    :${RESET} ${EML_FROM}"
+    echo -e "  ${DIM}Subject :${RESET} ${EML_SUBJECT}"
+    echo -e "  ${DIM}Date    :${RESET} ${EML_DATE}"
+    echo -e "  ${DIM}Msg-ID  :${RESET} ${EML_MSG_ID}"
+    echo
+ 
+    echo -e "  ${BOLD}[1]${RESET} Reply to sender only"
+    echo -e "  ${BOLD}[2]${RESET} Reply all (sender + Cc)"
+    echo -e "  ${BOLD}[q]${RESET} Cancel"
+    echo -ne "\n  Choice: "; local choice; read -r choice
+ 
+    case "$choice" in
+        q|Q) return ;;
+        2)
+            local reply_to; reply_to=$(extractEmail "$EML_FROM")
+            local reply_cc=""
+            if [[ -n "$EML_CC" ]]; then
+                reply_cc=$(echo "$EML_CC" | sed "s/${active_email}[,[:space:]]*//" | sed 's/,[[:space:]]*$//' | sed 's/^,[[:space:]]*//')
+            fi
+            ;;
+        *)
+            local reply_to; reply_to=$(extractEmail "$EML_FROM")
+            local reply_cc=""
+            ;;
+    esac
+ 
+    local reply_subject="$EML_SUBJECT"
+    if ! echo "$reply_subject" | grep -qi "^Re:"; then
+        reply_subject="Re: ${reply_subject}"
+    fi
+ 
+    local reply_references=""
+    if [[ -n "$EML_REFERENCES" ]]; then
+        reply_references="${EML_REFERENCES} ${EML_MSG_ID}"
+    else
+        reply_references="${EML_MSG_ID}"
+    fi
+ 
+    local quoted_body
+    quoted_body=$(quoteBody "$EML_BODY_FILE" "$EML_FROM" "$EML_DATE")
+ 
+    local body_file; body_file=$(safeTmpFile ".txt")
+    {
+        printf "\n\nThanks and regards,\n%s\n" "$active_name"
+        cat "$quoted_body"
+    } > "$body_file"
+ 
+    local ATTACHMENTS=()
+    _composeLoop "$active" "$account_conf" "$active_email" "$active_name" \
+        "$reply_to" "$reply_cc" "" "$reply_subject" \
+        "no" "" "$body_file" "" \
+        "$EML_MSG_ID" "$reply_references"
 }

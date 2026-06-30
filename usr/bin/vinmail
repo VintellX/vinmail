@@ -12,6 +12,7 @@ source "$LIB/core.sh"
 source "$LIB/ui.sh"
 source "$LIB/accounts.sh"
 source "$LIB/compose.sh"
+source "$LIB/reply.sh"
 source "$LIB/drafts.sh"
 
 # ----- Main Menu -----
@@ -31,6 +32,7 @@ vinify() {
             "Edit / Rename / Test"
             "Delete account"
             "Compose & send mail"
+            "Reply to mail"
             "$draft_label"
             "Status"
             "Quit"
@@ -53,9 +55,9 @@ vinify() {
                 case $taken in
                     0) switchAccount ;; 1) addAccount  ;;
                     2) editAccount   ;; 3) delAccount  ;;
-                    4) sendMail      ;; 5) showDrafts  ;;
-                    6) showStatus    ;;
-                    7) echo -e "\n${DIM}  Goodbye.${RESET}\n"; exit 0 ;;
+                    4) sendMail      ;; 5) replyToMail ;;
+                    6) showDrafts    ;; 7) showStatus    ;; 
+                    8) echo -e "\n${DIM}  Goodbye.${RESET}\n"; exit 0 ;;
                 esac
                 tput civis 2>/dev/null || true
                 ;;

@@ -61,6 +61,8 @@ buildMessage() {
     local subject="$6" body_file="$7"
     local _attachments_name="$8"
     local gpg_sign="$9" gpg_key="${10:-}"
+    local in_reply_to="${11:-}"
+    local references="${12:-}"
 
     local _attachments=()
     eval "_attachments=(\"\${${_attachments_name}[@]+\${${_attachments_name}[@]}}\")"
@@ -101,6 +103,8 @@ buildMessage() {
         [[ -n "$cc" ]] && echo "Cc: $cc"
         echo "Subject: $subject"
         echo "Message-ID: $msg_id"
+        [[ -n "$in_reply_to" ]]  && echo "In-Reply-To: $in_reply_to"
+        [[ -n "$references" ]]   && echo "References: $references"
         echo "MIME-Version: 1.0"
         echo "X-Mailer: VinMail ${VERSION}"
 
@@ -190,7 +194,13 @@ manageAttachments() {
 
         case "$c" in
             a|A)
-                echo -ne "  Path to file: "; local fpath; read -r fpath
+                echo -ne "  Path to file: "
+                local fpath
+                if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+                    read -e -r fpath
+                else
+                    read -r fpath
+                fi
                 fpath="${fpath/#\~/$HOME}"
                 if [[ ! -f "$fpath" ]]; then
                     err "File not found: $fpath"; sleep 1
@@ -354,6 +364,8 @@ _composeLoop() {
     local gpg_key="${10:-}"
     local body_file="${11}"
     local source_draft="${12:-}"   # set if opened from a draft
+    local in_reply_to="${13:-}"
+    local references="${14:-}"
 
     local _draft_saved=0 # tracking state :)
  
@@ -368,7 +380,8 @@ _composeLoop() {
  
         showComposeState "$active_name" "$active_email" \
             "$to" "$cc" "$bcc" "$subject" "$attach_display" "$gpg_sign" "$gpg_key"
- 
+        [[ -n "$in_reply_to" ]] && \
+            echo -e "  ${DIM}Reply to: ${in_reply_to}${RESET}\n"
         echo -e "  ${BOLD}[t]${RESET} Edit To"
         echo -e "  ${BOLD}[c]${RESET} Edit Cc"
         echo -e "  ${BOLD}[b]${RESET} Edit Bcc"
@@ -458,7 +471,8 @@ _composeLoop() {
  
                 buildMessage "$active_name" "$active_email" \
                     "$to" "$cc" "$bcc" "$subject" \
-                    "$body_file" ATTACHMENTS "$gpg_sign" "$gpg_key"
+                    "$body_file" ATTACHMENTS "$gpg_sign" "$gpg_key" \
+                    "$in_reply_to" "$references"
  
                 local all_rcpts=()
                 IFS=',' read -ra _to_arr  <<< "$to"
