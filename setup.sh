@@ -11,6 +11,7 @@ install -Dm644 usr/lib/vinmail/core.sh     /usr/lib/vinmail/core.sh
 install -Dm644 usr/lib/vinmail/ui.sh       /usr/lib/vinmail/ui.sh
 install -Dm644 usr/lib/vinmail/accounts.sh /usr/lib/vinmail/accounts.sh
 install -Dm644 usr/lib/vinmail/compose.sh  /usr/lib/vinmail/compose.sh
+install -Dm644 usr/lib/vinmail/reply.sh    /usr/lib/vinmail/reply.sh
 install -Dm644 usr/lib/vinmail/drafts.sh    /usr/lib/vinmail/drafts.sh
 
 echo "[*] Installing templates and configs..."

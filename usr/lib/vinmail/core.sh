@@ -237,3 +237,24 @@ readPrefill() {
         return $?
     fi
 }
+
+# ----- read file path -----
+readFilePath() {
+    local _var_name="$1"
+    local _prompt="$2"
+    local _input
+
+    tput cnorm 2>/dev/null || true
+
+    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+        local _plain_prompt
+        _plain_prompt=$(echo -e "  ${_prompt}: " | sed 's/\x1b\[[0-9;]*m//g')
+        read -e -r -p "$_plain_prompt" _input
+        eval "$_var_name=\"\$_input\""
+        return 0
+    else
+        echo -ne "  ${_prompt}: "
+        smartRead "$_var_name" ""
+        return $?
+    fi
+}

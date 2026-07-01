@@ -26,6 +26,8 @@ Account management is built around a simple registry of aliases. Add an account 
 
 Composing a mail opens a persistent screen where every field (To, Cc, Bcc, Subject, body, and attachments) remains editable until you confirm sending. The body opens in your `$EDITOR` of choice. Attachments are base64-encoded and sent as proper MIME multipart messages. Messages can also be GPG-signed, with the body kept as plain readable text and the clearsigned version attached separately as `signature.asc` for recipients who want to verify it.
 
+VinMail also supports replying to received mail. Provide the original message as a `.eml` file and VinMail parses the sender, subject, and threading headers automatically, quotes the original body, and opens the compose screen pre-filled. Reply-to-sender and reply-all are both supported, with your own address filtered out of the recipient list. Drafts can be saved at any point during composition and resumed later from the main menu.
+
 Navigation throughout uses arrow keys and j/k, so it feels natural if you spend time in vim or any other terminal tool.
 
 ### More: \[[Installation](https://github.com/VintellX/vinmail/wiki/Installation)\] \[[User Guide](https://github.com/VintellX/vinmail/wiki/User-Guide)\] 
