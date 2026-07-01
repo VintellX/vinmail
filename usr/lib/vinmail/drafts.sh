@@ -1,5 +1,5 @@
 #!/bin/bash
-# VinMail
+# VinMail v1.2.0 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
 DRAFTS_DIR="$VINMAIL_DIR/drafts"

@@ -18,7 +18,7 @@
 
 > "Bash-ing out an email."
 
-<img src="https://github.com/user-attachments/assets/df5d82ad-261c-4ca9-b085-ed593fca77e0" alt="VinMail - Preview" align="right" height="250px">VinMail is an interactive CLI mail manager written in Bash. It sits on top of msmtp and gives you a proper terminal interface for managing multiple email accounts and sending mail, without needing any graphical client or external dependencies beyond what you likely already have.
+<img src="https://github.com/user-attachments/assets/50d823c8-8580-4850-803f-6808539197d6" alt="VinMail - Preview" align="right" height="250px">VinMail is an interactive CLI mail manager written in Bash. It sits on top of msmtp and gives you a proper terminal interface for managing multiple email accounts and sending mail, without needing any graphical client or external dependencies beyond what you likely already have.
 
 At its core, VinMail handles everything itself. It builds the full RFC 2822 MIME message in Bash, including headers, body, and attachments, then pipes it directly to msmtp for delivery. No mail daemon, no sendmail, no intermediate client.
 
