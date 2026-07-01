@@ -1,5 +1,5 @@
 #!/bin/bash
-# VinMail v1.1.2 - Terminal based Mail Manager
+# VinMail v1.2.0 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
 # ----- GPG -----
@@ -149,24 +149,26 @@ readOrAbort() {
     local _var_name="$1"
     # local -n _rab_var="$1"
     local prompt="$2"
-    local _input
+    # local _input
     echo -ne "  ${prompt}: "
     # read -r _rab_var
     # if [[ -z "$_rab_var" ]]; then
     #     info "Aborted."; sleep 1; return 1
     # fi
-    read -r _input
-    if [[ -z "$_input" ]]; then
-        info "Aborted."; sleep 1; return 1
-    fi
-    eval "$_var_name=\"\$_input\""
-    return 0
+    smartRead "$_var_name" ""
+    return $?
+    # read -r _input
+    # if [[ -z "$_input" ]]; then
+    #     info "Aborted."; sleep 1; return 1
+    # fi
+    # eval "$_var_name=\"\$_input\""
+    # return 0
 }
 
 # ----- Add Account -----
 addAccount() {
     echoHeader "Add Account"
-    echo -e "  ${DIM}Leave any prompt empty and press Enter to abort.${RESET}\n"
+    echo -e "  ${DIM}Press Esc Key to abort.${RESET}\n"
     local alias email name host port starttls tls_file
 
     while true; do

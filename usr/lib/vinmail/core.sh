@@ -1,5 +1,5 @@
 #!/bin/bash
-# VinMail v1.1.2 - Terminal based Mail Manager
+# VinMail v1.2.0 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
 # ----- Paths -----
@@ -14,14 +14,14 @@ TEMPLATE_DIR="$(cd "$_lib_dir/../../share/vinmail" 2>/dev/null && pwd \
     || echo "/usr/share/vinmail")"
 LOCK_FILE="$VINMAIL_DIR/.lock"
 LOCK_DIR="$VINMAIL_DIR/.lockdir"
-VERSION="1.1.2"
+VERSION="1.2.0"
 SUBTITLE="Bash-ing out an email; Shell yeah, mail sent."
 
 # ----- Color Codos -----
 if [[ -t 1 ]]; then
-    RED="\033[31m";     GREEN="\033[32m"
-    YELLOW="\033[33m";  CYAN="\033[36m"
-    BOLD="\033[1m";     DIM="\033[2m"; RESET="\033[0m"
+    RED=$'\e[31m';     GREEN=$'\e[32m'
+    YELLOW=$'\e[33m';  CYAN=$'\e[36m'
+    BOLD=$'\e[1m';     DIM=$'\e[2m'; RESET=$'\e[0m'
 else
     RED=""; GREEN=""; YELLOW=""; CYAN=""
     BOLD=""; DIM=""; RESET=""
@@ -158,4 +158,103 @@ rmMeta() {
     local tmp; tmp=$(mktemp)
     grep -v "^${1}|" "$META_FILE" > "$tmp" || true
     mv "$tmp" "$META_FILE"
+}
+
+# ----- smart read -----
+smartRead() {
+    local _var_name="$1"
+    local _current="${2:-}"
+    local _input="$_current"
+    local char
+
+    tput cnorm 2>/dev/null || true
+
+    # print prefill if any (i'll most likely remove this if it doesn't work like i want it to)
+    echo -ne "$_current"
+
+    while true; do
+        IFS= read -rsn1 char
+
+        case "$char" in
+            $'\x1b')
+                local seq1 seq2
+                IFS= read -rsn1 -t 0.05 seq1 2>/dev/null || seq1=""
+                IFS= read -rsn1 -t 0.05 seq2 2>/dev/null || seq2=""
+
+                if [[ -n "$seq1" ]]; then
+                    continue
+                fi
+
+                echo -ne "\n  ${YELLOW}Abort? [y/N]: ${RESET}"
+                local confirm
+                IFS= read -r confirm
+                if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                    return 1
+                fi
+
+                echo -ne "  $_input"
+                ;;
+
+            $'\x7f'|$'\b')
+                if [[ ${#_input} -gt 0 ]]; then
+                    _input="${_input%?}"
+                    echo -ne "\b \b"
+                fi
+                ;;
+
+            "")
+                echo
+                eval "$_var_name=\"\$_input\""
+                return 0
+                ;;
+
+            *)
+                _input+="$char"
+                echo -ne "$char"
+                ;;
+        esac
+    done
+}
+
+# ----- read with prefill (bash 3.2 compatible) -----
+readPrefill() {
+    local _var_name="$1"
+    local _prompt="$2"
+    local _current="$3"
+    local _input
+
+    tput cnorm 2>/dev/null || true
+
+    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+        local _rl_prompt="${_prompt//$'\e'/$'\001\e'}"
+        _rl_prompt="${_rl_prompt//$'m'/$'m\002'}"
+        read -e -i "$_current" -r -p "  ${_rl_prompt}: " _input
+        printf -v "$_var_name" '%s' "$_input"
+    else
+        # bash 3.2 fallback
+        echo -ne "  ${_prompt}: "
+        smartRead "$_var_name" "$_current"
+        return $?
+    fi
+}
+
+# ----- read file path -----
+readFilePath() {
+    local _var_name="$1"
+    local _prompt="$2"
+    local _input
+
+    tput cnorm 2>/dev/null || true
+
+    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+        local _plain_prompt
+        _plain_prompt=$(echo -e "  ${_prompt}: " | sed 's/\x1b\[[0-9;]*m//g')
+        read -e -r -p "$_plain_prompt" _input
+        eval "$_var_name=\"\$_input\""
+        return 0
+    else
+        echo -ne "  ${_prompt}: "
+        smartRead "$_var_name" ""
+        return $?
+    fi
 }

@@ -1,4 +1,4 @@
-.TH VINMAIL 1 "2026" "vinmail 1.1.2" "User Commands"
+.TH VINMAIL 1 "2026" "vinmail 1.2.0" "User Commands"
 
 .SH NAME
 vinmail \- interactive terminal mail client for msmtp with multi-account and GPG support
@@ -10,7 +10,8 @@ vinmail \- interactive terminal mail client for msmtp with multi-account and GPG
 .B vinmail
 is a lightweight, Bash-based terminal mail client built on top of msmtp.
 It provides an interactive text-based interface for managing multiple
-email accounts and composing and sending mail directly from the terminal.
+email accounts and composing, replying to, drafting, and sending mail
+directly from the terminal.
 
 Navigation is performed using arrow keys or j/k, Enter to select, and q to cancel.
 
@@ -21,12 +22,12 @@ Set the active account by copying its configuration to ~/.msmtprc.
 
 .TP
 .B Add account
-Launch a guided setup wizard. Leaving any prompt empty aborts the process.
+Launch a guided setup wizard. Press Esc at any prompt to abort, with confirmation.
 
 .TP
 .B Edit / Rename / Test
 Modify account settings, update credentials, rename aliases, view configuration,
-or test SMTP connectivity.
+or test SMTP connectivity and authentication.
 
 .TP
 .B Delete account
@@ -34,8 +35,21 @@ Remove an account and its credentials. Requires typing 'yes' to confirm.
 
 .TP
 .B Compose & send mail
-Open the full compose interface where To, Cc, Bcc, and Subject can be edited at any time.
-The message body is written in $EDITOR. Supports file attachments and optional GPG signing.
+Open the full compose interface where To, Cc, Bcc, and Subject can be edited at
+any time. The message body is written in $EDITOR. Supports file attachments,
+optional GPG signing, and saving drafts.
+
+.TP
+.B Reply to mail
+Reply to a previously received message by providing it as a .eml file. Parses
+the original sender, subject, and Message-ID, builds proper In-Reply-To and
+References headers, and quotes the original body. Supports reply-to-sender
+and reply-all.
+
+.TP
+.B Drafts (n)
+Browse, open, continue editing, or delete saved drafts. The count in
+parentheses reflects the number of drafts currently saved.
 
 .TP
 .B Status
@@ -64,11 +78,15 @@ Open message body in $EDITOR
 
 .TP
 .B a
-Manage attachments (add or remove files)
+Manage attachments (add or remove files, supports tab completion for paths)
 
 .TP
 .B g
 Toggle GPG signing and select signing key
+
+.TP
+.B d
+Save the current message as a draft
 
 .TP
 .B y
@@ -76,7 +94,29 @@ Send message (with preview confirmation)
 
 .TP
 .B q
-Discard draft and exit compose mode
+Discard or exit compose mode. If the draft was already saved, exits without
+prompting.
+
+.SH FILES
+.TP
+.I ~/.local/share/vinmail/accounts/<alias>.conf
+Per-account msmtp configuration.
+
+.TP
+.I ~/.local/share/vinmail/accounts/<alias>.pass.gpg
+GPG-encrypted password, when GPG encryption is selected.
+
+.TP
+.I ~/.local/share/vinmail/drafts/<name>.draft
+Saved draft metadata (recipients, subject, GPG settings, attachment list).
+
+.TP
+.I ~/.local/share/vinmail/drafts/<name>.body
+Saved draft message body, linked to its .draft file by matching name.
+
+.TP
+.I ~/.msmtprc
+Active account configuration, used by msmtp.
 
 .SH AUTHOR
 Written by VintellX.

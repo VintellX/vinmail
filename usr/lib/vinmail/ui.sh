@@ -1,21 +1,37 @@
 #!/bin/bash
-# VinMail v1.1.2 - Terminal based Mail Manager
+# VinMail v1.2.0 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
 # ----- Keyboard Reader (arrows + j/k) -----
 KEY=""
 readKeyboardo() {
-    local char seq
-    IFS= read -rsn1 char
-    if [[ "$char" == $'\x1b' ]]; then
-        IFS= read -rsn2 -t 0.15 seq 2>/dev/null || seq=""
-        case "$seq" in
-            '[A') KEY="UP"   ;; '[B') KEY="DOWN"  ;;
-            '[C') KEY="RIGHT";; '[D') KEY="LEFT"   ;;
-            *)    KEY="ESC"  ;;
-        esac
+    local c
+    IFS= read -rsn1 c
+    if [[ $c == $'\e' ]]; then
+        IFS= read -rsn1 c
+        if [[ $c == "[" ]]; then
+            IFS= read -rsn1 c
+            case "$c" in
+                A) KEY="UP" ;;
+                B) KEY="DOWN" ;;
+                C) KEY="RIGHT" ;;
+                D) KEY="LEFT" ;;
+                *) KEY="ESC" ;;
+            esac
+        elif [[ $c == "O" ]]; then
+            IFS= read -rsn1 c
+            case "$c" in
+                A) KEY="UP" ;;
+                B) KEY="DOWN" ;;
+                C) KEY="RIGHT" ;;
+                D) KEY="LEFT" ;;
+                *) KEY="ESC" ;;
+            esac
+        else
+            KEY="ESC"
+        fi
     else
-        KEY="$char"
+        KEY="$c"
     fi
 }
 

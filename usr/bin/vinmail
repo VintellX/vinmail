@@ -1,5 +1,5 @@
 #!/bin/bash
-# VinMail v1.1.2 - Terminal based Mail Manager
+# VinMail v1.2.0 - Terminal based Mail Manager
 # "Bash-ing out an email."
 set -uo pipefail
 
@@ -12,23 +12,33 @@ source "$LIB/core.sh"
 source "$LIB/ui.sh"
 source "$LIB/accounts.sh"
 source "$LIB/compose.sh"
+source "$LIB/reply.sh"
+source "$LIB/drafts.sh"
 
 # ----- Main Menu -----
 vinify() {
-    local options=(
-        "Switch active account"
-        "Add account"
-        "Edit / Rename / Test"
-        "Delete account"
-        "Compose & send mail"
-        "Status"
-        "Quit"
-    )
-    local count=${#options[@]} taken=0
+    local taken=0
 
     tput civis 2>/dev/null || true
 
     while true; do
+        local d_count; d_count=$(draftCount)
+        local draft_label="Drafts"
+        [[ "$d_count" -gt 0 ]] && draft_label="Drafts (${d_count})"
+
+        local options=(
+            "Switch active account"
+            "Add account"
+            "Edit / Rename / Test"
+            "Delete account"
+            "Compose & send mail"
+            "Reply to mail"
+            "$draft_label"
+            "Status"
+            "Quit"
+        )
+        local total=${#options[@]}
+
         echoMainHeader
         for i in "${!options[@]}"; do
             [[ $i -eq $taken ]] \
@@ -38,15 +48,16 @@ vinify() {
 
         readKeyboardo
         case "$KEY" in
-            UP|k)     taken=$(( taken - 1 )); [[ $taken -lt 0 ]] && taken=$(( count - 1 )) ;;
-            DOWN|j)   taken=$(( taken + 1 )); [[ $taken -ge count ]] && taken=0 ;;
+            UP|k)   taken=$(( taken - 1 )); [[ $taken -lt 0 ]] && taken=$(( total - 1 )) ;;
+            DOWN|j) taken=$(( taken + 1 )); [[ $taken -ge total ]] && taken=0 ;;
             ""|$'\n')
                 tput cnorm 2>/dev/null || true 
                 case $taken in
                     0) switchAccount ;; 1) addAccount  ;;
-                    2) editAccount   ;; 3) delAccount   ;;
-                    4) sendMail      ;; 5) showStatus   ;;
-                    6) echo -e "\n${DIM}  Goodbye.${RESET}\n"; exit 0 ;;
+                    2) editAccount   ;; 3) delAccount  ;;
+                    4) sendMail      ;; 5) replyToMail ;;
+                    6) showDrafts    ;; 7) showStatus    ;; 
+                    8) echo -e "\n${DIM}  Goodbye.${RESET}\n"; exit 0 ;;
                 esac
                 tput civis 2>/dev/null || true
                 ;;
@@ -57,8 +68,60 @@ vinify() {
     done
 }
 
+# ----- Dependency Check -----
+checkDeps() {
+    local hard=("msmtp" "sed" "awk" "grep" "base64")
+    for cmd in "${hard[@]}"; do
+        command -v "$cmd" >/dev/null 2>&1 || {
+            echo -e "${RED}  ✗ Missing required dependency: ${cmd}${RESET}"
+            echo -e "${DIM}  Install it and try again.${RESET}"
+            exit 1
+        }
+    done
+    local bash_major="${BASH_VERSINFO[0]}"
+    local warnings=()
+
+    if [[ "$bash_major" -lt 4 ]]; then
+        warnings+=("${YELLOW}  ! bash 4+ not found (running ${BASH_VERSION})${RESET}")
+        warnings+=("${DIM}    Some features like inline editing may be limited.${RESET}")
+        warnings+=("${DIM}    Install: brew install bash (macOS) or upgrade your system bash.${RESET}")
+    fi
+
+    local soft=("gpg" "file")
+    for cmd in "${soft[@]}"; do
+        command -v "$cmd" >/dev/null 2>&1 || {
+            case "$cmd" in
+                gpg)
+                    warnings+=("${YELLOW}  ! gpg not found${RESET}")
+                    warnings+=("${DIM}    GPG password encryption and mail signing will be unavailable.${RESET}")
+                    ;;
+                file)
+                    warnings+=("${YELLOW}  ! file not found${RESET}")
+                    warnings+=("${DIM}    MIME type detection will fall back to application/octet-stream.${RESET}")
+                    ;;
+            esac
+        }
+    done
+
+    if [[ ${#warnings[@]} -gt 0 ]]; then
+        clear
+        echo -e "${CYAN}${BOLD}"
+        echo "  ╔════════════════════════════════════╗"
+        echo "  ║         VinMail - Startup          ║"
+        echo "  ╚════════════════════════════════════╝"
+        echo -e "${RESET}\n"
+        for line in "${warnings[@]}"; do
+            echo -e "$line"
+        done
+        echo
+        echo -ne "  ${DIM}Press Enter to continue...${RESET}"
+        read -r
+    fi
+}
+
 # ----- Run -----
 mkdir -p "$VINMAIL_DIR"
+checkDeps
 acquireLock
 init
 vinify

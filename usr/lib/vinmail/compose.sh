@@ -1,5 +1,5 @@
 #!/bin/bash
-# VinMail v1.1.2 - Terminal based Mail Manager
+# VinMail v1.2.0 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
 
@@ -61,6 +61,8 @@ buildMessage() {
     local subject="$6" body_file="$7"
     local _attachments_name="$8"
     local gpg_sign="$9" gpg_key="${10:-}"
+    local in_reply_to="${11:-}"
+    local references="${12:-}"
 
     local _attachments=()
     eval "_attachments=(\"\${${_attachments_name}[@]+\${${_attachments_name}[@]}}\")"
@@ -101,6 +103,8 @@ buildMessage() {
         [[ -n "$cc" ]] && echo "Cc: $cc"
         echo "Subject: $subject"
         echo "Message-ID: $msg_id"
+        [[ -n "$in_reply_to" ]]  && echo "In-Reply-To: $in_reply_to"
+        [[ -n "$references" ]]   && echo "References: $references"
         echo "MIME-Version: 1.0"
         echo "X-Mailer: VinMail ${VERSION}"
 
@@ -190,7 +194,8 @@ manageAttachments() {
 
         case "$c" in
             a|A)
-                echo -ne "  Path to file: "; local fpath; read -r fpath
+                local fpath
+                readFilePath fpath "Path to file" || continue
                 fpath="${fpath/#\~/$HOME}"
                 if [[ ! -f "$fpath" ]]; then
                     err "File not found: $fpath"; sleep 1
@@ -284,20 +289,94 @@ sendMail() {
     }
     printf "\n\nThanks and regards,\n%s\n" "$active_name" > "$body_file"
 
-    # ----- Compose loop -----
+    
+    _composeLoop "$active" "$account_conf" "$active_email" "$active_name" \
+        "" "" "" "" "no" "" "$body_file"
+}
+
+# ----- Sedn mailo from draft -----
+sendMailFromDraft() {
+    local draft_file="$1"
+ 
+    local active; active=$(fetchActive)
+    if [[ -z "$active" ]]; then
+        err "No active account. Switch to one first."; sleep 2; return
+    fi
+ 
+    local account_conf="$ACCOUNTS_DIR/${active}.conf"
+    if [[ ! -f "$account_conf" ]]; then
+        err "Config not found for '${active}'. Try switching again."; sleep 2; return
+    fi
+ 
+    cp "$account_conf" "$MSMTPRC"
+    chmod 600 "$MSMTPRC"
+ 
+    local active_email active_name
+    active_email=$(grep -E "^[[:space:]]*user[[:space:]]" "$account_conf" \
+        | head -1 | awk '{print $2}' || echo "")
+    active_name=$(grep -E "^[[:space:]]*from[[:space:]]" "$account_conf" \
+        | head -1 | sed 's/^[[:space:]]*from[[:space:]]*//' | tr -d '"' || echo "")
+    [[ -z "$active_name" ]] && active_name="$active_email"
+ 
+    loadDraft "$draft_file" || return
+ 
+    local ATTACHMENTS=()
+    if [[ -n "$DRAFT_ATTACHMENTS" ]]; then
+        IFS='|' read -ra ATTACHMENTS <<< "$DRAFT_ATTACHMENTS"
+        local valid=()
+        for f in "${ATTACHMENTS[@]}"; do
+            [[ -f "$f" ]] && valid+=("$f") || warn "Attachment no longer exists, skipping: $f"
+        done
+        ATTACHMENTS=("${valid[@]+"${valid[@]}"}")
+    fi
+ 
+    local body_file
+    if [[ -n "$DRAFT_BODY_FILE" && -f "$DRAFT_BODY_FILE" ]]; then
+        # copy to a temp file before editing
+        body_file=$(safeTmpFile ".txt")
+        cp "$DRAFT_BODY_FILE" "$body_file"
+    else
+        body_file=$(safeTmpFile ".txt")
+        printf "\n\nThanks and regards,\n%s\n" "$active_name" > "$body_file"
+    fi
+ 
+    _composeLoop "$active" "$account_conf" "$active_email" "$active_name" \
+        "$DRAFT_TO" "$DRAFT_CC" "$DRAFT_BCC" "$DRAFT_SUBJECT" \
+        "$DRAFT_GPG_SIGN" "$DRAFT_GPG_KEY" "$body_file" "$draft_file"
+}
+
+# ----- Compose loop -----
+_composeLoop() {
+    local active="$1"
+    local account_conf="$2"
+    local active_email="$3"
+    local active_name="$4"
+    local to="$5"
+    local cc="$6"
+    local bcc="$7"
+    local subject="$8"
+    local gpg_sign="$9"
+    local gpg_key="${10:-}"
+    local body_file="${11}"
+    local source_draft="${12:-}"   # set if opened from a draft
+    local in_reply_to="${13:-}"
+    local references="${14:-}"
+
+    local _draft_saved=0 # tracking state :)
+ 
     while true; do
         local attach_display=""
-        # if [[ ${#ATTACHMENTS[@]+"${#ATTACHMENTS[@]}"} -gt 0 ]]; then
         if [[ ${#ATTACHMENTS[@]} -gt 0 ]]; then
             local names=()
             for f in "${ATTACHMENTS[@]}"; do names+=("$(basename "$f")"); done
             attach_display=$(printf '%s, ' "${names[@]}")
             attach_display="${attach_display%, }"
         fi
-
+ 
         showComposeState "$active_name" "$active_email" \
             "$to" "$cc" "$bcc" "$subject" "$attach_display" "$gpg_sign" "$gpg_key"
-
+        [[ -n "$in_reply_to" ]] && \
+            echo -e "  ${DIM}Reply to: ${in_reply_to}${RESET}\n"
         echo -e "  ${BOLD}[t]${RESET} Edit To"
         echo -e "  ${BOLD}[c]${RESET} Edit Cc"
         echo -e "  ${BOLD}[b]${RESET} Edit Bcc"
@@ -305,17 +384,42 @@ sendMail() {
         echo -e "  ${BOLD}[e]${RESET} Edit body in ${EDITOR}"
         echo -e "  ${BOLD}[a]${RESET} Manage attachments"
         echo -e "  ${BOLD}[g]${RESET} GPG sign settings"
+        echo -e "  ${BOLD}[d]${RESET} Save draft"
         echo -e "  ${BOLD}[y]${RESET} ${GREEN}${BOLD}Send${RESET}"
         echo -e "  ${BOLD}[q]${RESET} Cancel / discard"
         echo -ne "\n  Action: "; local action; read -r action
-
+ 
         case "$action" in
-            t|T) echo -ne "  ${CYAN}To${RESET}: ";      read -r to ;;
-            c|C) echo -ne "  ${CYAN}Cc${RESET}: ";      read -r cc ;;
-            b|B) echo -ne "  ${CYAN}Bcc${RESET}: ";     read -r bcc ;;
-            s|S) echo -ne "  ${CYAN}Subject${RESET}: "; read -r subject ;;
-            e|E) "$EDITOR" "$body_file" ;;
+            t|T)
+                readPrefill to "${CYAN}To${RESET}" "$to"
+                _draft_saved=0
+                ;;
+            c|C)
+                readPrefill cc "${CYAN}Cc${RESET}" "$cc"
+                _draft_saved=0
+                ;;
+            b|B)
+                readPrefill bcc "${CYAN}Bcc${RESET}" "$bcc"
+                _draft_saved=0
+                ;;
+            s|S)
+                readPrefill subject "${CYAN}Subject${RESET}" "$subject"
+                _draft_saved=0;;
+            e|E)
+                "$EDITOR" "$body_file"
+                _draft_saved=0
+                ;;
             a|A) manageAttachments ATTACHMENTS ;;
+            d|D)
+                saveDraft "$to" "$cc" "$bcc" "$subject" \
+                    "$gpg_sign" "$gpg_key" "$body_file" ATTACHMENTS
+                # if editing an existing draft, del the old one after saving new
+                if [[ -n "$source_draft" && -f "$source_draft" ]]; then
+                    deleteDraft "$source_draft"
+                    source_draft=""
+                fi
+                _draft_saved=1
+                ;;
             g|G)
                 if [[ "$gpg_sign" == "yes" ]]; then
                     echo -ne "  Disable GPG signing? [y/N]: "; local dis; read -r dis
@@ -330,8 +434,7 @@ sendMail() {
                 if [[ -z "$to" ]]; then
                     err "Recipient (To) is required."; sleep 2; continue
                 fi
-
-                # Warn on empty body
+ 
                 local body_text
                 body_text=$(grep -v "^-- $" "$body_file" \
                     | grep -v "^${active_name}$" \
@@ -342,7 +445,7 @@ sendMail() {
                     echo -ne "  Send anyway? [y/N]: "; local eo; read -r eo
                     [[ ! "$eo" =~ ^[Yy]$ ]] && continue
                 fi
-
+ 
                 # Preview
                 echoHeader "Preview"
                 echo -e "  ${DIM}From   :${RESET} ${active_name} <${active_email}>"
@@ -353,17 +456,19 @@ sendMail() {
                 [[ -n "$attach_display" ]] && echo -e "  ${CYAN}Attach :${RESET} ${attach_display}"
                 [[ "$gpg_sign" == "yes" ]] && echo -e "  ${CYAN}GPG    :${RESET} ${GREEN}signed${RESET}"
                 echo -e "\n  --> Body preview <--"
-                head -5 "$body_file" | sed 's/^/  /'
+                local term_width; term_width=$(tput cols 2>/dev/null || echo 80)
+                cat "$body_file" | fold -s -w $(( term_width - 4 )) | sed 's/^/  /'
                 echo -e "  --->><<---"
-
+ 
                 echo -ne "\n  ${YELLOW}Confirm send? [Y/n]: ${RESET}"
                 local confirm; read -r confirm
                 [[ "$confirm" =~ ^[Nn]$ ]] && continue
-
+ 
                 buildMessage "$active_name" "$active_email" \
                     "$to" "$cc" "$bcc" "$subject" \
-                    "$body_file" ATTACHMENTS "$gpg_sign" "$gpg_key"
-
+                    "$body_file" ATTACHMENTS "$gpg_sign" "$gpg_key" \
+                    "$in_reply_to" "$references"
+ 
                 local all_rcpts=()
                 IFS=',' read -ra _to_arr  <<< "$to"
                 IFS=',' read -ra _cc_arr  <<< "${cc:-}"
@@ -371,21 +476,30 @@ sendMail() {
                 for r in "${_to_arr[@]:-}" "${_cc_arr[@]:-}" "${_bcc_arr[@]:-}"; do
                     r="${r// /}"; [[ -n "$r" ]] && all_rcpts+=("$r")
                 done
-
+ 
                 echo -e "\n  Sending..."
                 gpgInfo "$account_conf"
                 if msmtp --file="$MSMTPRC" -- "${all_rcpts[@]}" < "$BUILD_MSG"; then
                     ok "Mail sent to: ${to}${cc:+, ${cc}}${bcc:+ (+ bcc)}"
+                    # del draft after on successful send
+                    if [[ -n "$source_draft" && -f "$source_draft" ]]; then
+                        deleteDraft "$source_draft"
+                        info "Draft deleted after sending."
+                    fi
                 else
                     err "Send failed. Check ${VINMAIL_DIR}/msmtp.log"
                 fi
                 sleep 2; return
                 ;;
             q|Q)
-                echo -ne "\n  Discard draft? [y/N]: "; local dis; read -r dis
-                [[ "$dis" =~ ^[Yy]$ ]] && { info "Discarded."; sleep 1; return; }
+                if [[ $_draft_saved -eq 1 ]]; then
+                    info "Draft saved. Returning to menu."; sleep 1; return
+                else
+                    echo -ne "\n  Discard draft? [y/N]: "
+                    local dis; read -r dis
+                    [[ "$dis" =~ ^[Yy]$ ]] && { info "Discarded."; sleep 1; return; }
+                fi
                 ;;
-            *) warn "Unknown action." ;;
         esac
     done
 }
