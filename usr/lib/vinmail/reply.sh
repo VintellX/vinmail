@@ -74,7 +74,9 @@ parseEml() {
 # keep parseEml from being too messy, just vars
 _setEmlHeader() {
     local header="$1" value="$2"
-    case "${header,,}" in
+    local header_lower
+    header_lower=$(echo "$header" | tr '[:upper:]' '[:lower:]')
+    case "$header_lower" in
         from)        EML_FROM="$value"       ;;
         to)          EML_TO="$value"         ;;
         cc)          EML_CC="$value"         ;;
