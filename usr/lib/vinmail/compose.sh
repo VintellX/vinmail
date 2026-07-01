@@ -194,13 +194,8 @@ manageAttachments() {
 
         case "$c" in
             a|A)
-                echo -ne "  Path to file: "
                 local fpath
-                if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                    read -e -r fpath
-                else
-                    read -r fpath
-                fi
+                readFilePath fpath "Path to file" || continue
                 fpath="${fpath/#\~/$HOME}"
                 if [[ ! -f "$fpath" ]]; then
                     err "File not found: $fpath"; sleep 1

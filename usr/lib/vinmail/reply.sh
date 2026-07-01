@@ -146,15 +146,8 @@ replyToMail() {
     echoHeader "Reply to Mail"
     echo -e "  ${DIM}Provide the original mail as a .eml file.${RESET}"
     echo -e "  ${DIM}Most mail clients: File → Save As → .eml${RESET}\n"
-    echo -ne "  ${CYAN}Path to .eml file${RESET}: "
- 
     local eml_path
-    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-        read -e -r eml_path
-    else
-        read -r eml_path
-    fi
- 
+    readFilePath eml_path "Path to .eml file" || return
     eml_path="${eml_path/#\~/$HOME}"
  
     if [[ -z "$eml_path" ]]; then
@@ -188,9 +181,44 @@ replyToMail() {
         q|Q) return ;;
         2)
             local reply_to; reply_to=$(extractEmail "$EML_FROM")
-            local reply_cc=""
+            local orig_to_others=""
+            if [[ -n "$EML_TO" ]]; then
+                local _addr
+                while IFS=',' read -ra _addrs; do
+                    for _addr in "${_addrs[@]}"; do
+                        _addr="${_addr// /}"
+                        local _extracted; _extracted=$(extractEmail "$_addr")
+                        # skip our own email
+                        [[ "$_extracted" == "$active_email" ]] && continue
+                        [[ -z "$orig_to_others" ]] \
+                            && orig_to_others="$_addr" \
+                            || orig_to_others="${orig_to_others}, ${_addr}"
+                    done
+                done <<< "$EML_TO"
+            fi
+        
+            local orig_cc_others=""
             if [[ -n "$EML_CC" ]]; then
-                reply_cc=$(echo "$EML_CC" | sed "s/${active_email}[,[:space:]]*//" | sed 's/,[[:space:]]*$//' | sed 's/^,[[:space:]]*//')
+                local _addr
+                while IFS=',' read -ra _addrs; do
+                    for _addr in "${_addrs[@]}"; do
+                        _addr="${_addr// /}"
+                        local _extracted; _extracted=$(extractEmail "$_addr")
+                        [[ "$_extracted" == "$active_email" ]] && continue
+                        [[ -z "$orig_cc_others" ]] \
+                            && orig_cc_others="$_addr" \
+                            || orig_cc_others="${orig_cc_others}, ${_addr}"
+                    done
+                done <<< "$EML_CC"
+            fi
+        
+            local reply_cc=""
+            if [[ -n "$orig_to_others" && -n "$orig_cc_others" ]]; then
+                reply_cc="${orig_to_others}, ${orig_cc_others}"
+            elif [[ -n "$orig_to_others" ]]; then
+                reply_cc="$orig_to_others"
+            elif [[ -n "$orig_cc_others" ]]; then
+                reply_cc="$orig_cc_others"
             fi
             ;;
         *)
