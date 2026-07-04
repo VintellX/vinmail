@@ -1,5 +1,5 @@
 #!/bin/bash
-# VinMail v1.2.0 - Terminal based Mail Manager
+# VinMail v1.2.1 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
 # ----- GPG -----
