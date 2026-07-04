@@ -1,74 +1,116 @@
 #!/bin/bash
-# VinMail v1.1.2 - Terminal based Mail Manager
+# VinMail v1.2.0 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
-# ----- Parse EML -----
-parseEml() {
-    local eml_file="$1"
-    local normalized_eml; normalized_eml=$(safeTmpFile ".eml")
-    tr -d '\r' < "$eml_file" > "$normalized_eml"
-    eml_file="$normalized_eml"
-    # ----- Headers -----
-    EML_FROM=""
-    EML_TO=""
-    EML_CC=""
-    EML_SUBJECT=""
-    EML_MSG_ID=""
-    EML_REFERENCES=""
-    EML_DATE=""
-    EML_BODY_FILE=""
+decodeQP() {
+    perl -0777 -pe 's/=\r?\n//g; s/=([0-9A-Fa-f]{2})/chr(hex($1))/ge' 2>/dev/null \
+    || sed ':a;N;$!ba;s/=\n//g' | sed 's/=\r//g'
+}
  
-    local current_header="" current_value=""
+_getBoundary() {
+    local text="$1"
+    local b=""
+    b=$(echo "$text" | grep -o 'boundary="[^"]*"' | head -1 | cut -d'"' -f2)
+    if [[ -z "$b" ]]; then
+        b=$(echo "$text" | grep -o "boundary=[^;[:space:]\"]*" \
+            | head -1 | sed 's/boundary=//' | tr -d '"')
+    fi
+    echo "$b"
+}
+
+_processPart() {
+    local part_file="$1"
+    local part_ct="" part_enc="" in_h=1
+    local header_block=""
+ 
     while IFS= read -r line; do
         [[ -z "$line" ]] && break
- 
-        if [[ "$line" =~ ^[[:space:]] ]]; then
-            current_value+=" ${line#"${line%%[! ]*}"}"
-        else
-            if [[ -n "$current_header" ]]; then
-                _setEmlHeader "$current_header" "$current_value"
-            fi
-            current_header="${line%%:*}"
-            current_value="${line#*: }"
+        header_block+="$line"$'\n'
+        local lc; lc=$(echo "$line" | tr '[:upper:]' '[:lower:]')
+        if echo "$lc" | grep -q "^content-type:"; then
+            part_ct="$line"
+        elif [[ "$line" =~ ^[[:space:]] ]] && [[ -n "$part_ct" ]]; then
+            part_ct+=" $line"
         fi
-    done < "$eml_file"
-    [[ -n "$current_header" ]] && _setEmlHeader "$current_header" "$current_value"
- 
-    local body_file; body_file=$(safeTmpFile ".txt")
-    EML_BODY_FILE="$body_file"
- 
-    local in_body=0 in_text_part=0 boundary=""
-    local content_type
-    content_type=$(grep -i "^Content-Type:" "$eml_file" | head -1)
- 
-    if echo "$content_type" | grep -qi "multipart"; then
-        boundary=$(echo "$content_type" | grep -o 'boundary="[^"]*"' | cut -d'"' -f2)
-        if [[ -z "$boundary" ]]; then
-            boundary=$(echo "$content_type" | grep -o "boundary=[^ ;]*" | cut -d'=' -f2)
+        if echo "$lc" | grep -q "^content-transfer-encoding:"; then
+            part_enc=$(echo "$line" | sed 's/.*:[[:space:]]*//' \
+                | tr '[:upper:]' '[:lower:]' | tr -d ' \r')
         fi
+    done < "$part_file"
  
-        local in_headers=0 found_plain=0
+    local lc_ct; lc_ct=$(echo "$part_ct" | tr '[:upper:]' '[:lower:]')
+ 
+    if echo "$lc_ct" | grep -q "text/plain"; then
+        local body; body=$(safeTmpFile ".body")
+        awk 'found{print} /^$/ && !found{found=1}' "$part_file" > "$body"
+        case "$part_enc" in
+            quoted-printable|quoted_printable) decodeQP < "$body" ;;
+            base64) base64 -d "$body" 2>/dev/null ;;
+            *) cat "$body" ;;
+        esac
+        rm -f "$body"
+        return 0
+ 
+    elif echo "$lc_ct" | grep -q "multipart"; then
+        local nb; nb=$(_getBoundary "$header_block")
+        if [[ -n "$nb" ]]; then
+            local nested; nested=$(safeTmpFile ".nested")
+            cp "$part_file" "$nested"
+            _extractTextPlain "$nested" "$nb"
+            local rc=$?
+            rm -f "$nested"
+            return $rc
+        fi
+    fi
+    return 1
+}
+_extractTextPlain() {
+    local file="$1"
+    local boundary="${2:-}"
+ 
+    if [[ -z "$boundary" ]]; then
+        local ct_block="" in_ct=0
         while IFS= read -r line; do
-            if [[ "$line" == "--${boundary}" || "$line" == "--${boundary} " ]]; then
-                in_headers=1; in_text_part=0; found_plain=0; continue
+            if echo "$line" | grep -qi "^Content-Type:"; then
+                ct_block="$line"; in_ct=1
+            elif [[ $in_ct -eq 1 && "$line" =~ ^[[:space:]] ]]; then
+                ct_block+=" $line"
+            elif [[ $in_ct -eq 1 ]]; then
+                break
             fi
-            if [[ "$line" == "--${boundary}--" ]]; then break; fi
- 
-            if [[ $in_headers -eq 1 ]]; then
-                [[ -z "$line" ]] && { in_headers=0; [[ $found_plain -eq 1 ]] && in_text_part=1; continue; }
-                echo "$line" | grep -qi "content-type: text/plain" && found_plain=1
-                continue
-            fi
- 
-            if [[ $in_text_part -eq 1 ]]; then
-                echo "$line" >> "$body_file"
-            fi
-        done < "$eml_file"
-    else
-        awk '/^$/{found=1; next} found{print}' "$eml_file" > "$body_file"
+        done < "$file"
+        boundary=$(_getBoundary "$ct_block")
     fi
  
-    return 0
+    [[ -z "$boundary" ]] && return 1
+ 
+    local part_file; part_file=$(safeTmpFile ".part")
+    local in_part=0 found=0
+ 
+    while IFS= read -r line; do
+        line="${line%$'\r'}"
+ 
+        if [[ "$line" == "--${boundary}" || "$line" == "--${boundary} " ]]; then
+            if [[ $in_part -eq 1 && -s "$part_file" ]]; then
+                if _processPart "$part_file"; then
+                    found=1; break
+                fi
+            fi
+            > "$part_file"; in_part=1; continue
+        fi
+ 
+        if [[ "$line" == "--${boundary}--" || "$line" == "--${boundary}-- " ]]; then
+            if [[ $in_part -eq 1 && -s "$part_file" ]]; then
+                _processPart "$part_file" && found=1
+            fi
+            break
+        fi
+ 
+        [[ $in_part -eq 1 ]] && echo "$line" >> "$part_file"
+    done < "$file"
+ 
+    rm -f "$part_file"
+    return $(( found == 0 ? 1 : 0 ))
 }
 
 # keep parseEml from being too messy, just vars
@@ -85,6 +127,69 @@ _setEmlHeader() {
         references)  EML_REFERENCES="$value" ;;
         date)        EML_DATE="$value"       ;;
     esac
+}
+
+# ----- Parse EML -----
+parseEml() {
+    local eml_file="$1"
+ 
+    local clean; clean=$(safeTmpFile ".eml")
+    tr -d '\r' < "$eml_file" > "$clean"
+    eml_file="$clean"
+    # ----- Headers -----
+    EML_FROM=""
+    EML_TO=""
+    EML_CC=""
+    EML_SUBJECT=""
+    EML_MSG_ID=""
+    EML_REFERENCES=""
+    EML_DATE=""
+    EML_BODY_FILE=""
+ 
+    local cur_h="" cur_v=""
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && break
+        if [[ "$line" =~ ^[[:space:]] ]]; then
+            cur_v+=" ${line#"${line%%[! 	]*}"}"
+        else
+            [[ -n "$cur_h" ]] && _setEmlHeader "$cur_h" "$cur_v"
+            cur_h="${line%%:*}"
+            cur_v="${line#*: }"
+        fi
+    done < "$eml_file"
+    [[ -n "$cur_h" ]] && _setEmlHeader "$cur_h" "$cur_v"
+ 
+    local body_file; body_file=$(safeTmpFile ".txt")
+    EML_BODY_FILE="$body_file"
+ 
+    local ct_block="" in_ct=0
+    while IFS= read -r line; do
+        if echo "$line" | grep -qi "^Content-Type:"; then
+            ct_block="$line"; in_ct=1
+        elif [[ $in_ct -eq 1 && "$line" =~ ^[[:space:]] ]]; then
+            ct_block+=" $line"
+        elif [[ $in_ct -eq 1 ]]; then
+            break
+        fi
+    done < "$eml_file"
+ 
+    if echo "$ct_block" | grep -qi "multipart"; then
+        local top_boundary; top_boundary=$(_getBoundary "$ct_block")
+        [[ -n "$top_boundary" ]] && \
+            _extractTextPlain "$eml_file" "$top_boundary" > "$body_file"
+    else
+        local top_enc
+        top_enc=$(grep -i "^Content-Transfer-Encoding:" "$eml_file" | head -1 \
+            | sed 's/.*:[[:space:]]*//' | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+        local raw; raw=$(safeTmpFile ".raw")
+        awk '/^$/{found=1;next} found{print}' "$eml_file" > "$raw"
+        case "$top_enc" in
+            quoted-printable|quoted_printable) decodeQP < "$raw" > "$body_file" ;;
+            base64) base64 -d "$raw" > "$body_file" 2>/dev/null ;;
+            *) cp "$raw" "$body_file" ;;
+        esac
+        rm -f "$raw"
+    fi
 }
 
 # ----- extract sender email and name -----
@@ -230,10 +335,8 @@ replyToMail() {
     esac
  
     local reply_subject="$EML_SUBJECT"
-    if ! echo "$reply_subject" | grep -qi "^Re:"; then
-        reply_subject="Re: ${reply_subject}"
-    fi
- 
+    echo "$reply_subject" | grep -qi "^Re:" || reply_subject="Re: ${reply_subject}" 
+
     local reply_references=""
     if [[ -n "$EML_REFERENCES" ]]; then
         reply_references="${EML_REFERENCES} ${EML_MSG_ID}"
