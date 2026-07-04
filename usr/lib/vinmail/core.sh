@@ -163,7 +163,8 @@ rmMeta() {
 # ----- smart read -----
 smartRead() {
     local _var_name="$1"
-    local _current="${2:-}"
+    local _prompt="$2"
+    local _current="${3:-}"
     local _input="$_current"
     local char
 
@@ -192,7 +193,8 @@ smartRead() {
                     return 1
                 fi
 
-                echo -ne "  $_input"
+                echo -ne "\r\033[K"
+                echo -ne "  ${_prompt}: ${_input}"
                 ;;
 
             $'\x7f'|$'\b')
@@ -233,7 +235,7 @@ readPrefill() {
     else
         # bash 3.2 fallback
         echo -ne "  ${_prompt}: "
-        smartRead "$_var_name" "$_current"
+        smartRead "$_var_name" "$_prompt" "$_current"
         return $?
     fi
 }
@@ -254,7 +256,7 @@ readFilePath() {
         return 0
     else
         echo -ne "  ${_prompt}: "
-        smartRead "$_var_name" ""
+        smartRead "$_var_name" "$_prompt" ""
         return $?
     fi
 }

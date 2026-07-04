@@ -155,7 +155,7 @@ readOrAbort() {
     # if [[ -z "$_rab_var" ]]; then
     #     info "Aborted."; sleep 1; return 1
     # fi
-    smartRead "$_var_name" ""
+    smartRead "$_var_name" "$prompt" ""
     return $?
     # read -r _input
     # if [[ -z "$_input" ]]; then
