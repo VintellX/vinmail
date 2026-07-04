@@ -1,5 +1,5 @@
 #!/bin/bash
-# VinMail v1.2.0 - Terminal based Mail Manager
+# VinMail v1.2.1 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
 # ----- Paths -----
@@ -14,7 +14,7 @@ TEMPLATE_DIR="$(cd "$_lib_dir/../../share/vinmail" 2>/dev/null && pwd \
     || echo "/usr/share/vinmail")"
 LOCK_FILE="$VINMAIL_DIR/.lock"
 LOCK_DIR="$VINMAIL_DIR/.lockdir"
-VERSION="1.2.0"
+VERSION="1.2.1"
 SUBTITLE="Bash-ing out an email; Shell yeah, mail sent."
 
 # ----- Color Codos -----
@@ -163,7 +163,8 @@ rmMeta() {
 # ----- smart read -----
 smartRead() {
     local _var_name="$1"
-    local _current="${2:-}"
+    local _prompt="$2"
+    local _current="${3:-}"
     local _input="$_current"
     local char
 
@@ -192,7 +193,8 @@ smartRead() {
                     return 1
                 fi
 
-                echo -ne "  $_input"
+                echo -ne "\r\033[K"
+                echo -ne "  ${_prompt}: ${_input}"
                 ;;
 
             $'\x7f'|$'\b')
@@ -233,7 +235,7 @@ readPrefill() {
     else
         # bash 3.2 fallback
         echo -ne "  ${_prompt}: "
-        smartRead "$_var_name" "$_current"
+        smartRead "$_var_name" "$_prompt" "$_current"
         return $?
     fi
 }
@@ -254,7 +256,7 @@ readFilePath() {
         return 0
     else
         echo -ne "  ${_prompt}: "
-        smartRead "$_var_name" ""
+        smartRead "$_var_name" "$_prompt" ""
         return $?
     fi
 }

@@ -1,5 +1,5 @@
 #!/bin/bash
-# VinMail v1.2.0 - Terminal based Mail Manager
+# VinMail v1.2.1 - Terminal based Mail Manager
 # "Bash-ing out an email."
 
 # ----- GPG -----
@@ -155,7 +155,7 @@ readOrAbort() {
     # if [[ -z "$_rab_var" ]]; then
     #     info "Aborted."; sleep 1; return 1
     # fi
-    smartRead "$_var_name" ""
+    smartRead "$_var_name" "$prompt" ""
     return $?
     # read -r _input
     # if [[ -z "$_input" ]]; then
